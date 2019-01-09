@@ -1,6 +1,6 @@
 *.pdf
-
 *.pickle
-
+*.txt
+*.lp
 
 man/*
