@@ -236,7 +236,6 @@ class DCOPFModel(OrganiseData):
         
         # Specify solver to be used and output format
         self.opt = SolverFactory('gurobi', solver_io='mps')
-        self.opt.options['OptimalityTol'] = 1e-9
         
         
         # Parameters used for different scenarios
@@ -308,8 +307,7 @@ class DCOPFModel(OrganiseData):
         # Generator short-run marginal costs
         def C_RULE(model, g):
             marginal_cost = float(self.df_g.loc[g, 'SRMC_2016-17'])
-#             return marginal_cost / model.BASE_POWER
-            return marginal_cost
+            return marginal_cost / model.BASE_POWER
         model.C = Param(model.OMEGA_G, rule=C_RULE)
 
         # Demand
@@ -332,15 +330,25 @@ class DCOPFModel(OrganiseData):
 
         # Fixed power injections
         model.R = Param(model.OMEGA_N, initialize=0, mutable=True)
+        
+        # Maximum power output
+        def REGISTERED_CAPACITY_RULE(model, g):
+            registered_capacity = float(self.df_g.loc[g, 'REG_CAP'])
+            return registered_capacity / model.BASE_POWER
+        model.REGISTERED_CAPACITY = Param(model.OMEGA_G, rule=REGISTERED_CAPACITY_RULE)
 
-
+        # Generation shock indicator parameter (=0 if generation shock specified, 
+        # else equals 1 if normal operation). Initialize value to 1 (normal operation)
+        model.GENERATION_SHOCK_INDICATOR = Param(model.OMEGA_G, initialize=1, mutable=True)
+        
+        # Emissions intensity shock indicator parameter. Used to scale original emissions intensities.
+        model.EMISSIONS_INTENSITY_SHOCK_FACTOR = Param(model.OMEGA_G, initialize=1, mutable=True)
+        
+        
         # Variables
         # ---------
-        # Generator output
-        def P_RULE(model, g):
-            registered_capacity = float(self.df_g.loc[g, 'REG_CAP'])
-            return (0, registered_capacity / model.BASE_POWER)
-        model.p = Var(model.OMEGA_G, bounds=P_RULE)
+        # Generator output (constrained to non-negative values)
+        model.p = Var(model.OMEGA_G, within=NonNegativeReals)
 
         # HVDC flows
         def P_H_RULE(model, h):
@@ -365,6 +373,11 @@ class DCOPFModel(OrganiseData):
                     - sum(model.B[n, m] * (model.theta[n] - model.theta[m]) for m in network_graph[n]) 
                     - sum(model.K[n, h] * model.p_H[h] for h in model.OMEGA_H) == 0)
         model.POWER_BALANCE = Constraint(model.OMEGA_N, rule=POWER_BALANCE_RULE)
+        
+        # Max power output
+        def P_MAX_RULE(model, g):
+            return model.p[g] <= model.REGISTERED_CAPACITY[g] * model.GENERATION_SHOCK_INDICATOR[g]
+        model.P_MAX = Constraint(model.OMEGA_G, rule=P_MAX_RULE)
 
         # Reference angle
         def REFERENCE_ANGLE_RULE(model, n):
@@ -388,28 +401,18 @@ class DCOPFModel(OrganiseData):
             return model.AC_FLOW[j] - model.F[j] <= 0
         model.AC_POWER_FLOW_LIMIT = Constraint(model.OMEGA_J, rule=AC_POWER_FLOW_LIMIT_RULE)
 
-
-        # Compute absolute flows over HVDC links
-        # --------------------------------------
-        model.x_1 = Var(model.OMEGA_H, within=NonNegativeReals)
-        model.x_2 = Var(model.OMEGA_H, within=NonNegativeReals)
-
-        def ABS_HVDC_FLOW_1_RULE(model, h):
-            return model.x_1[h] >= model.p_H[h]
-        model.ABS_HVDC_FLOW_1 = Constraint(model.OMEGA_H, rule=ABS_HVDC_FLOW_1_RULE)
-
-        def ABS_HVDC_FLOW_2_RULE(model, h):
-            return model.x_2[h] >= - model.p_H[h]
-        model.ABS_HVDC_FLOW_2 = Constraint(model.OMEGA_H, rule=ABS_HVDC_FLOW_2_RULE)
-
-        def HVDC_FLOW_COST_RULE(model):
-            return float(0 / model.BASE_POWER)
-        model.HVDC_FLOW_COST = Param(initialize=HVDC_FLOW_COST_RULE)
-
+        
+        # Expressions
+        # -----------
+        # Effective emissions intensity (original emissions intensity x scaling factor)
+        def E_HAT_RULE(model, g):
+            return model.E[g] * model.EMISSIONS_INTENSITY_SHOCK_FACTOR[g]
+        model.E_HAT = Expression(model.OMEGA_G, rule=E_HAT_RULE)
+        
 
         # Objective
         # ---------
-        model.OBJECTIVE = Objective(expr=sum((model.C[g] + ((model.E[g] - model.PHI) * model.TAU)) * model.p[g] for g in model.OMEGA_G) + sum((model.x_1[h] + model.x_2[h]) * model.HVDC_FLOW_COST for h in model.OMEGA_H))
+        model.OBJECTIVE = Objective(expr=sum((model.C[g] + ((model.E_HAT[g] - model.PHI) * model.TAU)) * model.p[g] for g in model.OMEGA_G))
 
         return model
     
@@ -447,15 +450,13 @@ class DCOPFModel(OrganiseData):
         for n in self.model.OMEGA_N:
             self.model.D[n] = float(self.df_scenarios.loc[('demand', n), (week_index, scenario_index)] / self.model.BASE_POWER.value)
             self.model.R[n] = float((self.df_scenarios.loc[('hydro', n), (week_index, scenario_index)] + self.df_scenarios.loc[('intermittent', n), (week_index, scenario_index)]) / self.model.BASE_POWER.value)
-
+            
         # Update emissions intensity baseline
-        if baseline is not None:
-            self.model.PHI = float(baseline)
+        self.model.PHI = float(baseline)
 
         # Update permit price
-        if permit_price is not None:
-            self.model.TAU = float(permit_price / self.model.BASE_POWER.value)
-            
+        self.model.TAU = float(permit_price / self.model.BASE_POWER.value)
+        
         # Update week index
         self.week_index = week_index
         
@@ -467,145 +468,78 @@ class DCOPFModel(OrganiseData):
         "Solve model"
         
         self.opt.solve(self.model)
-        
-        
-    def get_scenario_total_emissions(self):
-        """Total emissions [tCO2] for each scenario
-
-        Returns
-        -------
-        scenario_emissions : dict
-            Total emissions for each NEM region and national level for given scenario    
-        """
-
-        # Power output and emissions
-        df = pd.DataFrame({'p': self.model.p.get_values()}).mul(self.model.BASE_POWER.value).join(self.df_g[['EMISSIONS', 'NEM_REGION', 'FUEL_TYPE']], how='left')
-
-        # Dictionary in which to store aggregate results
-        emissions_scenario_results = dict()
-
-        # Compute total emissions in each NEM region per hour
-        df_emissions = df.groupby('NEM_REGION').apply(lambda x: x.prod(axis=1).sum())
-
-        # Sum to find national total per hour
-        df_emissions.loc['NATIONAL'] = df_emissions.sum()
-
-        # Multiply by scenario duration to find total emissions for scenario
-        df_emissions = df_emissions.mul(self.df_scenarios.loc[('hours', 'duration'), (self.week_index, self.scenario_index)])
-
-        # Dictionary containing emissions data
-        scenario_emissions = df_emissions.to_dict()
-
-        return scenario_emissions
-    
-    
-    def get_scenario_scheme_revenue(self):
-        """Scheme revenue for given scenario
-        
-        Returns
-        -------
-        scenario_scheme_revenue : dict
-            Scheme revenue for each NEM region as well as national total for given scenario        
-        """
-
-        # Power output and emissions
-        df = pd.DataFrame({'p': self.model.p.get_values()}).mul(self.model.BASE_POWER.value).join(self.df_g[['EMISSIONS', 'NEM_REGION', 'FUEL_TYPE']], how='left')
-
-        # Scheme revenue for each NEM region per hour
-        df_scheme_revenue = df.groupby('NEM_REGION').apply(lambda x: x['EMISSIONS'].subtract(self.model.PHI.value).mul(x['p']).sum())
-
-        # Scheme revenue for nation per hour
-        df_scheme_revenue.loc['NATIONAL'] = df_scheme_revenue.sum()
-
-        # Multiply by scenario duration to get total scheme revenue
-        df_scheme_revenue = df_scheme_revenue.mul(self.df_scenarios.loc[('hours', 'duration'), (self.week_index, self.scenario_index)])
-
-        # Convert to dictionary
-        scenario_scheme_revenue = df_scheme_revenue.to_dict()
-        
-        return scenario_scheme_revenue
-    
-    
-    def get_scenario_energy_revenue(self):
-        """Revenue obtained from energy sales for given scenario [$]
-        
-        Returns
-        -------
-        scenario_energy_revenue : dict
-            Revenue from energy sales for each NEM region as well as national total for given scenario        
-        """
-        
-        # Revenue from energy sales
-        # -------------------------
-        df = pd.DataFrame.from_dict({n: [self.model.dual[self.model.POWER_BALANCE[n]] * self.model.BASE_POWER.value] for n in self.model.OMEGA_N}, columns=['price'], orient='index')
-
-        # Demand for given scenario
-        df_demand = self.df_scenarios.loc[('demand'), (self.week_index, self.scenario_index)]
-        df_demand.name = 'demand'
-
-        # Total revenue from electricity sales per hour
-        df_energy_revenue = df.join(df_demand).join(self.df_n['NEM_REGION'], how='left').groupby('NEM_REGION').apply(lambda x: x['price'].mul(x['demand']).sum())
-        df_energy_revenue.loc['NATIONAL'] = df_energy_revenue.sum()
-
-        # Total revenue from energy sales
-        df_energy_revenue = df_energy_revenue.mul(self.df_scenarios.loc[('hours', 'duration'), (self.week_index, self.scenario_index)])
-
-        # Add to energy revenue results dictionary
-        scenario_energy_revenue = df_energy_revenue.to_dict()
-        
-        return scenario_energy_revenue
-
-
-    def get_scenario_generation_by_fuel_type(self):
-        """Generation by fuel type for each NEM region
-
-        Returns
-        -------
-        scenario_generation_by_fuel_type : dict
-            Total energy output [MWh] for each type of generating unit for each NEM region as well as national total
-        """
-
-        # Power output
-        df = pd.DataFrame({'p': self.model.p.get_values()}).mul(self.model.BASE_POWER.value).join(self.df_g[['EMISSIONS', 'NEM_REGION', 'FUEL_TYPE']], how='left')
-
-        # Energy output by fuel type for each NEM region [MWh]
-        df_fuel_type_generation = df.groupby(['NEM_REGION', 'FUEL_TYPE'])['p'].sum().mul(self.df_scenarios.loc[('hours', 'duration'), (self.week_index, self.scenario_index)])
-
-        # National total
-        df_nation = df_fuel_type_generation.reset_index().groupby('FUEL_TYPE')['p'].sum().reset_index()
-        df_nation['NEM_REGION'] = 'NATIONAL'
-
-        # Combine regional and national values and convert to dictionary
-        scenario_generation_by_fuel_type = pd.concat([df_fuel_type_generation.reset_index(), df_nation], sort=False).set_index(['NEM_REGION', 'FUEL_TYPE'])['p'].to_dict()
-
-        return scenario_generation_by_fuel_type
-    
-    
-    def get_scenario_energy_output(self):
-        """Energy output from dispatchable generators [MWh] for each NEM region and national total
-        
-        Returns
-        -------
-        total_energy_output : pandas DataFrame
-            Total energy output from all dispatchable generators under the emissions policy       
-        """
-        
-        # Power output
-        df = pd.DataFrame({'p': self.model.p.get_values()}).mul(self.model.BASE_POWER.value).join(self.df_g[['NEM_REGION']], how='left')
-
-        # Energy output by fuel type for each NEM region [MWh]
-        df_energy_output = df.groupby(['NEM_REGION'])['p'].sum().mul(self.df_scenarios.loc[('hours', 'duration'), (self.week_index, self.scenario_index)])
-
-        # Compute national total
-        df_energy_output.loc['NATIONAL'] = df_energy_output.sum()
-
-        return df_energy_output
 
 
 # In[2]:
 
 
+def get_aggregate_weekly_statistics(dcopf_object, scenario_power_output, week_index, baseline):
+    """Compute summarised weekly statistics
+    
+    Parameters
+    ----------
+    dcopf_object : class
+        Contains DCOPF scenario results and underlying data
+        
+    scenario_power_output : dict
+        power output for each generator for each week and each scenario
+        
+    week_index : int
+        Week for which aggregate statistics are to be calculated
+        
+    baseline : int
+        Emissions intensity baseline that applied for the given week
+        
+        
+    Returns
+    -------
+    output : dict
+        Dictionary summarising average emissions intensity of regulated generators, total emissions,
+        energy output from regulated generators, and net scheme revenue for given week
+        (dict keys: 'average_regulated_emissions_intensity', 'emissions_tCO2', 'energy_MWh', 'net_revenue')
+    """
+    
+    # Power output for a given week
+    df = pd.DataFrame(scenario_power_output).loc[:, (week_index, slice(None))].reset_index().melt(id_vars=['index']).rename(columns={'variable_0': 'week', 'variable_1': 'scenario', 'value': 'power_pu'}).astype({'week': int, 'scenario': int})
+
+    # Scenario durations for a given week
+    duration = dcopf_object.df_scenarios.loc[('hours', 'duration'), (week_index, slice(None))].reset_index()
+    duration.columns = duration.columns.droplevel(level=1)
+
+    # Merge scenario durations
+    df = pd.merge(df, duration, how='left', left_on=['week', 'scenario'], right_on=['week', 'scenario'])
+
+    # Merge emissions intensity for each DUID
+    df = pd.merge(df, dcopf_object.df_g[['EMISSIONS']], how='left', left_on='index', right_index=True)
+
+    # Compute total energy output from each generator for each scenario [MWh]
+    df['energy_MWh'] = df['power_pu'].mul(100).mul(df['hours'])
+
+    # Compute total emissions for each scenario [tCO2]
+    df['emissions_tCO2'] = df['energy_MWh'].mul(df['EMISSIONS'])
+
+    # Compute net scheme revenue for each generator for each scenario [$]
+    df['net_revenue'] = df['EMISSIONS'].subtract(baseline).mul(permit_price).mul(df['energy_MWh'])
+
+    # Compute total emissions and total energy output
+    output = df[['emissions_tCO2', 'energy_MWh', 'net_revenue']].sum().to_dict()
+
+    # Average emissions intensity of generators under emissions policy for given week
+    output['average_regulated_emissions_intensity'] = output['emissions_tCO2'] / output['energy_MWh']
+
+    return output
+
+
+# In[3]:
+
+
 import time
+import hashlib
+
+import numpy as np
+np.random.seed(10)
+
+
 
 # Paths
 # -----
@@ -616,218 +550,249 @@ data_dir = os.path.join(os.path.curdir, os.path.pardir, os.path.pardir, os.path.
 scenarios_dir = os.path.join(os.path.curdir, os.path.pardir, os.path.pardir, '1_create_scenarios', 'output')
 
 
-# Instantiate DCOPF model object
-DCOPF = DCOPFModel(data_dir=data_dir, scenarios_dir=scenarios_dir)
+# def update_model(data_dir, scenarios_dir, update_mode, shock_option, permit_price, baseline, week_of_shock, rolling_scheme_revenue, target_scheme_revenue, update_gain)
+"""Run model with given parameters
 
-
-# Result containers
-# -----------------
-# For total emissions results
-scenario_total_emissions = dict()
-
-# For scheme revenue results
-scenario_scheme_revenue = dict()
-
-# For energy revenue
-scenario_energy_revenue = dict()
-
-# For generation by fuel type
-scenario_generation_by_fuel_type = dict()
-
-# For energy output from generators regulated by the emissions policy
-scenario_energy_output = dict()
-
-# Baseline
-weekly_baseline = dict()
-
-# Rolling scheme revenue
-rolling_scheme_revenue = dict()
-
-
-# Run scenarios
-# -------------
-# Initialise rolling scheme revenue
-rolling_scheme_revenue = 0
-
-# Initialise emissions intensity baseline
-baseline = 1
-
-# Permit price [$/tCO2]
-permit_price = 40
-
-# Target scheme revenue [$] (want scheme to be revenue neutral)
-target_scheme_revenue = 0
-
-
-# For each week
-for week_index in DCOPF.df_scenarios.columns.levels[0]:
-    # Start clock to see how long it takes to solve all scenarios for each week
-    t0 = time.time()
+Parameters
+----------
+data_dir : str
+    Path to directory containing core data files used in model initialisation
     
-    # Record baseline for coming scenario
-    weekly_baseline[week_index] = baseline
-       
-    # For each representative scenario approximating a week's operating state
-    for scenario_index in DCOPF.df_scenarios.columns.levels[1]:        
-        # Update model parameters
-        DCOPF.update_model_parameters(week_index=week_index, scenario_index=scenario_index, baseline=baseline, permit_price=40)
+scenarios_dir : str
+    Path to directory containing representative operating scenarios
 
-        # Solve model
-        DCOPF.solve_model()
-
-
-        # Extract results from model object
-        # ---------------------------------
-        # Emissions
-        scenario_total_emissions[(week_index, scenario_index)] = DCOPF.get_scenario_total_emissions()
-
-        # Scheme revenue
-        scenario_scheme_revenue[(week_index, scenario_index)] = DCOPF.get_scenario_scheme_revenue()
-
-        # Revenue from energy sales
-        scenario_energy_revenue[(week_index, scenario_index)] = DCOPF.get_scenario_energy_revenue()
-
-        # Generation by fuel type
-        scenario_generation_by_fuel_type[(week_index, scenario_index)] = DCOPF.get_scenario_generation_by_fuel_type()
-        
-        # Energy output
-        scenario_energy_output[(week_index, scenario_index)] = DCOPF.get_scenario_energy_output()
-        
-        
-        # Record rolling scheme revenue and update baseline
-        # -------------------------------------------------
-        # Update rolling scheme revenue
-        rolling_scheme_revenue += scenario_scheme_revenue[(week_index, scenario_index)]['NATIONAL']
-
-    # Total energy output for week just calculated [MWh]
-    total_energy_output = sum(scenario_energy_output[(week_index, i)]['NATIONAL'] for i in DCOPF.df_scenarios.columns.levels[1])
+update_mode : str
+    Specifies how baseline should be updated each week. 
     
-    # Average emissions intenstiy of generators under emissions policy for week just calculated [tCO2/MWh]
-    regulated_generators_emissions_intensity = sum(scenario_total_emissions[(week_index, i)]['NATIONAL'] for i in DCOPF.df_scenarios.columns.levels[1]) / total_energy_output
-
-    # Update baseline
-    baseline = regulated_generators_emissions_intensity - ((target_scheme_revenue - rolling_scheme_revenue) / (permit_price * total_energy_output))
-           
-    print(f'Completed week {week_index} in {time.time()-t0:.2f}s')
-
-
-# * Total emissions for each NEM region and nation
-# * Total scheme revenue for each NEM region and nation
-# * Generation by fuel type and NEM region and nation
-# 
-# Then aggregate scenarios into weekly values
-# * Average price for each NEM region
-# * Emissions intensity for system and regulated generators, for nation and each NEM region
-# * Generation by fuel type and NEM region and nation
-
-# In[ ]:
-
-
-import matplotlib.pyplot as plt
-
-
-class ProcessScenarioResults(OrganiseData):
-    "Aggregate scenario results to weekly statistics"
+    Options:
+        NO_UPDATE         - Same baseline in next iteration
+        HISTORIC_UPDATE   - Recalibrate baseline assuming next week will be the same as the week just past
+        HOOKE_UPDATE      - Adjustment is proportional to difference between rolling scheme revenue 
+                            and revenue target
     
-    def __init__(self, data_dir, scenarios_dir):
-        super().__init__(data_dir, scenarios_dir)
-        
-        self.df_weekly_fixed_injections = self.get_weekly_fixed_energy_injections()
-
-        
-    def get_weekly_fixed_energy_injections(self):
-        "Fixed demand, hydro, and intermittent injections aggregated to weekly level"
-
-        # Fixed injections for NEM regions
-        df_weekly_fixed_injections_regional = self.df_scenarios.T.drop(('hours', 'duration'), axis=1, level=0).mul(self.df_scenarios.T.loc[:, ('hours', 'duration')], axis=0).reset_index().drop('scenario', axis=1, level=0).sort_index(axis=1).groupby('week').sum().T.join(self.df_n[['NEM_REGION']], how='left').reset_index().drop('NODE_ID', axis=1).groupby(by=['level', 'NEM_REGION']).sum().reset_index()
-
-        # Sum to get national total fixed energy injections
-        df_weekly_fixed_injections_national = df_weekly_fixed_injections_regional.groupby(by=['level']).sum().reset_index()
-        df_weekly_fixed_injections_national['NEM_REGION'] = 'NATIONAL'
-
-        # Concatenate so all data is in same DataFrame
-        df_weekly_fixed_injections = pd.concat([df_weekly_fixed_injections_regional, df_weekly_fixed_injections_national], sort=False).set_index(['level', 'NEM_REGION']).T
-
-        return df_weekly_fixed_injections
+shock_option : str
+    Specifies type of shock to which system will be subjected. Options
     
+    Options:
+        NO_SHOCKS                 - No shocks to system
+        GENERATION_SHOCK          - 5% chance that each generator will be unavailable each week 
+                                    beginning from 'week_of_shock'
+        EMISSIONS_INTENSITY_SHOCK - Emissions intensity scaled by a random number between 0.8 
+                                    and 1 at 'week_of_shock'
+        
+initial_permit_price : float
+    Initialised permit price value [$/tCO2]
+
+initial_baseline : float
+    Initialised emissions intensity baseline value [tCO2/MWh]
+
+week_of_shock : int
+    Index for week at which either generation or emissions intensities shocks will be implemented / begin.
+
+initial_rolling_scheme_revenue : float
+    Initialised rolling scheme revenue value [$]
     
-    def get_weekly_average_energy_price(self, scenario_energy_revenue):
-        "Compute average prices"
-        
-        # Weekly revenue from energy sales for each NEM region and national total
-        df_weekly_energy_revenue = pd.DataFrame.from_dict(scenario_energy_revenue, orient='index').reset_index().drop('level_1', axis=1).groupby('level_0').sum()
+target_scheme_revenue : float
+    Net scheme revenue target [$]
 
-        # Average weekly wholesale price [$/MWh]
-        df_weekly_average_energy_price = df_weekly_energy_revenue.div(self.df_weekly_fixed_injections.loc[:, 'demand'])
+update_gain : float
+    Gain used to modify magnitude of restoring force when there is a difference rolling 
+    scheme revenue and the scheme revenue target
+"""
+
+# Model Parameters
+# ----------------
+for update_mode in ['NO_UPDATE', 'HISTORIC_UPDATE', 'HOOKE_UPDATE']:
+    for shock_option in ['NO_SHOCKS', 'GENERATION_SHOCK', 'EMISSIONS_INTENSITY_SHOCK']:
+        print(f'Running model {update_mode} with run option {shock_option}')
         
-        return df_weekly_average_energy_price
+        # Type of scenario to be investigated
+        update_mode = update_mode
+
+        # Option for given scenario
+        shock_option = shock_option
+
+        # Permit price [$/tCO2]
+        permit_price = 40
+
+        # Initial value for emissions intensity baseline [tCO2/MWh]
+        baseline = 1
+
+        # Index of week for which the shock (generation / emissions intensity) is applied
+        week_of_shock = 2
+
+        # Rolling scheme revenue [$]. Initiliase to 0.
+        rolling_scheme_revenue = 0
+
+        # Revenue target
+        target_scheme_revenue = 0
+
+        # Gain applied to emissions intensity update
+        update_gain = 1
+
+
+        # Summary of all parameters defining the model
+        parameter_values = (update_mode, shock_option, permit_price, baseline, week_of_shock, rolling_scheme_revenue, update_gain)
+
+        # Convert parameters to string
+        parameter_values_string = ''.join([str(i) for i in parameter_values])
+
+        # Find sha256 of parameter values - used as a unique identifier for the model run
+        run_id = hashlib.sha256(parameter_values_string.encode('utf-8')).hexdigest()[:8].upper()
+
+        # Summary of model options, identified by the hash value of these options
+        run_summary = {run_id: {'update_mode': update_mode, 'shock_option': shock_option, 'permit_price': permit_price, 
+                                'baseline': baseline, 'week_of_shock': week_of_shock, 
+                                'rolling_scheme_revenue': rolling_scheme_revenue,
+                                'target_scheme_revenue': target_scheme_revenue, 'update_gain': update_gain}}
+
+
+        # Check if model parameters valid
+        # -------------------------------
+        if update_mode not in ['NO_UPDATE', 'HISTORIC_UPDATE', 'HOOKE_UPDATE']:
+            raise Warning(f'Unexpected update_mode encountered: {update_mode}')
+
+        if shock_option not in ['NO_SHOCKS', 'GENERATION_SHOCK', 'EMISSIONS_INTENSITY_SHOCK']:
+            raise Warning(f'Unexpected shock_option encountered: {shock_option}')
+
+
+        # Create model object
+        # -------------------
+        # Instantiate DCOPF model object
+        DCOPF = DCOPFModel(data_dir=data_dir, scenarios_dir=scenarios_dir)
+
+
+        # Result containers
+        # -----------------
+        # Power output for each generator for each scenario
+        scenario_power_output = dict()
+
+        # Prices at each node for each scenario
+        scenario_nodal_prices = dict()
+
+        # Emissions intensity baseline
+        week_baseline = dict()
+
+        # Rolling scheme revenue
+        week_rolling_scheme_revenue = dict()
+        
+        
+        # Random shocks (set seed so these will be the same for each scenario)
+        # --------------------------------------------------------------------
+        np.random.seed(10)
+        # Specify if generator is on / off for a given week (1=generator is available, 0=generator unavailable)
+        df_generation_shock_indicator = pd.DataFrame(index=DCOPF.model.OMEGA_G, columns=DCOPF.df_scenarios.columns.levels[0], data=1)
+
+        # Pick a uniformly distributed random number between 0 and 1. If > 0.95 (i.e. a 5% chance)
+        # turn generator off for the given week. Only apply generation shocks to weeks after and 
+        # including week_of_shock.
+        df_generation_shock_indicator.loc[:, week_of_shock:] = df_generation_shock_indicator.loc[:, week_of_shock:].applymap(lambda x: 0 if np.random.uniform(0, 1) > 0.95 else 1)
+        
+        # Augment original emissions intensity by random scaling factor between 0.8 and 1
+        df_emissions_intensity_shock_factor = pd.Series(index=DCOPF.model.OMEGA_G, data=np.random.uniform(0.8, 1, len(DCOPF.model.OMEGA_G)))
+
+        
+        # Run scenarios
+        # -------------
+        # For each week
+        for week_index in DCOPF.df_scenarios.columns.levels[0][:5]:
+            # Start clock to see how long it takes to solve all scenarios for each week
+            t0 = time.time()
+
+            # Record baseline applying for the given week
+            week_baseline[week_index] = baseline
+
+            # Apply generation shock if run mode specified, and week index is greater than week_of_shock.
+            # Note: Different shock occurs each week after week_of_shock.
+            if shock_option == 'GENERATION_SHOCK':
+                # Loop through all generators
+                for g in DCOPF.model.OMEGA_G:
+                    # Initialise all generators to have a state of normal operation for each week
+                    DCOPF.model.GENERATION_SHOCK_INDICATOR[g] = float(df_generation_shock_indicator.loc[g, week_index])
+            
+            
+            # Apply emissions intensity shock if run mode specified. Shock occurs once at week index 
+            # given by week_of_shock
+            elif (shock_option == 'EMISSIONS_INTENSITY_SHOCK') and (week_index == week_of_shock):
+                # Loop through generators
+                for g in DCOPF.model.OMEGA_G:
+                    # Augement generator emissions intensity factor
+                    DCOPF.model.EMISSIONS_INTENSITY_SHOCK_FACTOR[g] = float(df_emissions_intensity_shock_factor.loc[g])
+                    
+                    
+            # For each representative scenario approximating a week's operating state
+            for scenario_index in DCOPF.df_scenarios.columns.levels[1]:        
+                # Update model parameters
+                DCOPF.update_model_parameters(week_index=week_index, scenario_index=scenario_index, baseline=baseline, permit_price=permit_price)
+
+                # Solve model
+                DCOPF.solve_model()
+
+                
+                # Store results
+                # -------------
+                # Power output from each generator
+                scenario_power_output[(week_index, scenario_index)] = DCOPF.model.p.get_values()
+
+                # Nodal prices
+                scenario_nodal_prices[(week_index, scenario_index)] = {n: DCOPF.model.dual[DCOPF.model.POWER_BALANCE[n]] for n in DCOPF.model.OMEGA_N}
+
+                
+            # Compute aggregate statistics for week just past
+            aggregate_weekly_statistics = get_aggregate_weekly_statistics(DCOPF, scenario_power_output, week_index, baseline)
+
+            # Update rolling scheme revenue
+            rolling_scheme_revenue += aggregate_weekly_statistics['net_revenue']
+
+            # Record rolling scheme revenue
+            week_rolling_scheme_revenue[week_index] = rolling_scheme_revenue
+
+
+            # Update baseline
+            # ---------------
+            if update_mode == 'BAU':
+                # No update to baseline (should be 0 tCO2/MWh)
+                baseline = baseline
+
+            elif update_mode == 'HISTORIC_UPDATE':
+                # Update baseline based on historic average emissions intensity and total energy output
+                # (assumes next week will be similar to the week just gone)
+                baseline += aggregate_weekly_statistics['average_regulated_emissions_intensity'] - update_gain * ((target_scheme_revenue - rolling_scheme_revenue) / (permit_price * aggregate_weekly_statistics['energy_MWh']))
+
+            elif update_mode == 'BASELINE_ADJUSTMENT':
+                # Increment last week's baseline by an amount proportional to the different 
+                # between rolling scheme revenue and the target, scaled by energy output in the week just past.
+                baseline += baseline - update_gain * ((target_scheme_revenue - rolling_scheme_revenue) / (permit_price * aggregate_weekly_statistics['energy_MWh']))
+
+            print(f'Completed week {week_index} in {time.time()-t0:.2f}s')
+
+
+        # Save results
+        # ------------
+        with open(f'output/{run_id}_scenario_nodal_prices.pickle', 'wb') as f:
+            pickle.dump(scenario_nodal_prices, f)
+
+        with open(f'output/{run_id}_scenario_power_output.pickle', 'wb') as f:
+            pickle.dump(scenario_power_output, f)
+
+        with open(f'output/{run_id}_week_baseline.pickle', 'wb') as f:
+            pickle.dump(week_baseline, f)
+
+        with open(f'output/{run_id}_run_summary.pickle', 'wb') as f:
+            pickle.dump(run_summary, f)
+            
+        with open(f'output/{run_id}_generation_shock_indicator.pickle', 'wb') as f:
+            pickle.dump(df_generation_shock_indicator, f)
+
+        with open(f'output/{run_id}_emissions_intensity_shock_factor.pickle', 'wb') as f:
+            pickle.dump(df_emissions_intensity_shock_factor, f)
+
+
+# In[4]:
+
+
+with open(f'output/{run_id}_run_summary.pickle', 'rb') as f:
+    runs = pickle.load(f)
     
-    
-    def get_weekly_emissions(self, scenario_total_emissions):
-        "Total emissions each week"
-        
-        # Total weekly emissions for each NEM zone and national total
-        df_weekly_emissions = pd.DataFrame.from_dict(scenario_total_emissions, orient='index').reset_index().drop('level_1', axis=1).groupby('level_0').sum()
-        
-        return df_weekly_emissions
-
-    
-    def get_weekly_system_emissions_intensity(self, scenario_total_emissions):
-        "Average emissions of system each week"
-        
-        # Total weekly emissions for each NEM zone and national total
-        df_weekly_emissions = self.get_weekly_emissions(scenario_total_emissions)
-        
-        # Average system emissions intensity for each each week
-        df_weekly_system_emissions_intensity = df_weekly_emissions.div(self.df_weekly_fixed_injections.loc[:, 'demand'])
-
-        return df_weekly_system_emissions_intensity
-
-    
-    def get_weekly_regulated_generators_emissions_intensity(self, scenario_total_emissions, scenario_generation_by_fuel_type):
-        "Average emissions intensity for regulated generators each week"
-        
-        # Total emissions each week
-        df_weekly_emissions = self.get_weekly_emissions(scenario_total_emissions)
-        
-        # Weekly energy output from generators subject to the emissions reduction scheme
-        df_weekly_regulated_generator_energy_output = pd.DataFrame(scenario_generation_by_fuel_type).T.reset_index().drop('level_1', axis=1, level=0).sort_index(axis=1).groupby('level_0').sum().T.reset_index().drop('level_1', axis=1).groupby('level_0').sum().T
-
-        # Average weekly emissions intensity of regulated generators
-        df_weekly_regulated_generators_emissions_intensity = df_weekly_emissions.div(df_weekly_regulated_generator_energy_output).fillna(0)
-
-        return df_weekly_regulated_generators_emissions_intensity
-
-    
-    def get_weekly_generation_by_fuel_type(self, scenario_generation_by_fuel_type):
-        "Aggregate weekly energy output by fuel type"
-        
-        # Generation by fuel type - regional and national statistics
-        df_weekly_generation_by_fuel_type = pd.DataFrame(scenario_generation_by_fuel_type).T.reset_index().sort_index(axis=1).drop('level_1', axis=1).groupby('level_0').sum()
-        
-        return df_weekly_generation_by_fuel_type
-    
-    
-# Class object used to process scenario results and produce weekly statistics
-WeeklyResults = ProcessScenarioResults(data_dir, scenarios_dir)
-
-# Average energy price each week - regional and national statistics
-weekly_average_energy_price = WeeklyResults.get_weekly_average_energy_price(scenario_energy_revenue)
-
-# Average system emissions intensity each week - regional and national statistics
-weekly_system_emissions_intensity = WeeklyResults.get_weekly_system_emissions_intensity(scenario_total_emissions)
-
-# Average emissions intensity of generators subject to emissions policy - regional and national statistics
-weekly_regulated_generators_emissions_intensity = WeeklyResults.get_weekly_regulated_generators_emissions_intensity(scenario_total_emissions, scenario_generation_by_fuel_type)
-
-# Generation by fuel type
-weekly_generation_by_fuel_type = WeeklyResults.get_weekly_generation_by_fuel_type(scenario_generation_by_fuel_type)
-
-plt.clf()
-pd.DataFrame.from_dict({week: {'baseline': baseline} for week, baseline in weekly_baseline.items()}, orient='index').plot()
-plt.show()
-
-plt.clf()
-pd.DataFrame.from_dict(scenario_scheme_revenue, orient='index').reset_index().sort_index(axis=1).drop('level_1', axis=1).groupby('level_0').sum().cumsum()['NATIONAL'].plot()
-plt.show()
+pd.DataFrame.from_dict(runs, orient='index')
 

@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head><meta charset="utf-8" />
-<title>base_model</title><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.1.10/require.min.js"></script>
+<title>snippets</title><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.1.10/require.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
 
 <style type="text/css">
@@ -11771,807 +11771,426 @@ div#notebook {
   <div tabindex="-1" id="notebook" class="border-box-sizing">
     <div class="container" id="notebook-container">
 
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div>
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<p>Code snippets that may be usefule when processing model results</p>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[&nbsp;]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+
+
+<span class="k">class</span> <span class="nc">ProcessScenarioResults</span><span class="p">(</span><span class="n">OrganiseData</span><span class="p">):</span>
+    <span class="s2">&quot;Aggregate scenario results to weekly statistics&quot;</span>
+    
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data_dir</span><span class="p">,</span> <span class="n">scenarios_dir</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">data_dir</span><span class="p">,</span> <span class="n">scenarios_dir</span><span class="p">)</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">df_weekly_fixed_injections</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_weekly_fixed_energy_injections</span><span class="p">()</span>
+
+        
+    <span class="k">def</span> <span class="nf">get_weekly_fixed_energy_injections</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="s2">&quot;Fixed demand, hydro, and intermittent injections aggregated to weekly level&quot;</span>
+
+        <span class="c1"># Fixed injections for NEM regions</span>
+        <span class="n">df_weekly_fixed_injections_regional</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">df_scenarios</span><span class="o">.</span><span class="n">T</span><span class="o">.</span><span class="n">drop</span><span class="p">((</span><span class="s1">&#39;hours&#39;</span><span class="p">,</span> <span class="s1">&#39;duration&#39;</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">level</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">mul</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">df_scenarios</span><span class="o">.</span><span class="n">T</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="p">(</span><span class="s1">&#39;hours&#39;</span><span class="p">,</span> <span class="s1">&#39;duration&#39;</span><span class="p">)],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="s1">&#39;scenario&#39;</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">level</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">sort_index</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s1">&#39;week&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="o">.</span><span class="n">T</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">df_n</span><span class="p">[[</span><span class="s1">&#39;NEM_REGION&#39;</span><span class="p">]],</span> <span class="n">how</span><span class="o">=</span><span class="s1">&#39;left&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="s1">&#39;NODE_ID&#39;</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">by</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;level&#39;</span><span class="p">,</span> <span class="s1">&#39;NEM_REGION&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+
+        <span class="c1"># Sum to get national total fixed energy injections</span>
+        <span class="n">df_weekly_fixed_injections_national</span> <span class="o">=</span> <span class="n">df_weekly_fixed_injections_regional</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">by</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;level&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+        <span class="n">df_weekly_fixed_injections_national</span><span class="p">[</span><span class="s1">&#39;NEM_REGION&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;NATIONAL&#39;</span>
+
+        <span class="c1"># Concatenate so all data is in same DataFrame</span>
+        <span class="n">df_weekly_fixed_injections</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">df_weekly_fixed_injections_regional</span><span class="p">,</span> <span class="n">df_weekly_fixed_injections_national</span><span class="p">],</span> <span class="n">sort</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span><span class="o">.</span><span class="n">set_index</span><span class="p">([</span><span class="s1">&#39;level&#39;</span><span class="p">,</span> <span class="s1">&#39;NEM_REGION&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">T</span>
+
+        <span class="k">return</span> <span class="n">df_weekly_fixed_injections</span>
+    
+    
+    <span class="k">def</span> <span class="nf">get_weekly_average_energy_price</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">scenario_energy_revenue</span><span class="p">):</span>
+        <span class="s2">&quot;Compute average prices&quot;</span>
+        
+        <span class="c1"># Weekly revenue from energy sales for each NEM region and national total</span>
+        <span class="n">df_weekly_energy_revenue</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">scenario_energy_revenue</span><span class="p">,</span> <span class="n">orient</span><span class="o">=</span><span class="s1">&#39;index&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="s1">&#39;level_1&#39;</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s1">&#39;level_0&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+
+        <span class="c1"># Average weekly wholesale price [$/MWh]</span>
+        <span class="n">df_weekly_average_energy_price</span> <span class="o">=</span> <span class="n">df_weekly_energy_revenue</span><span class="o">.</span><span class="n">div</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">df_weekly_fixed_injections</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="s1">&#39;demand&#39;</span><span class="p">])</span>
+        
+        <span class="k">return</span> <span class="n">df_weekly_average_energy_price</span>
+    
+    
+    <span class="k">def</span> <span class="nf">get_weekly_emissions</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">scenario_total_emissions</span><span class="p">):</span>
+        <span class="s2">&quot;Total emissions each week&quot;</span>
+        
+        <span class="c1"># Total weekly emissions for each NEM zone and national total</span>
+        <span class="n">df_weekly_emissions</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">scenario_total_emissions</span><span class="p">,</span> <span class="n">orient</span><span class="o">=</span><span class="s1">&#39;index&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="s1">&#39;level_1&#39;</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s1">&#39;level_0&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+        
+        <span class="k">return</span> <span class="n">df_weekly_emissions</span>
+
+    
+    <span class="k">def</span> <span class="nf">get_weekly_system_emissions_intensity</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">scenario_total_emissions</span><span class="p">):</span>
+        <span class="s2">&quot;Average emissions of system each week&quot;</span>
+        
+        <span class="c1"># Total weekly emissions for each NEM zone and national total</span>
+        <span class="n">df_weekly_emissions</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_weekly_emissions</span><span class="p">(</span><span class="n">scenario_total_emissions</span><span class="p">)</span>
+        
+        <span class="c1"># Average system emissions intensity for each each week</span>
+        <span class="n">df_weekly_system_emissions_intensity</span> <span class="o">=</span> <span class="n">df_weekly_emissions</span><span class="o">.</span><span class="n">div</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">df_weekly_fixed_injections</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="s1">&#39;demand&#39;</span><span class="p">])</span>
+
+        <span class="k">return</span> <span class="n">df_weekly_system_emissions_intensity</span>
+
+    
+    <span class="k">def</span> <span class="nf">get_weekly_regulated_generators_emissions_intensity</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">scenario_total_emissions</span><span class="p">,</span> <span class="n">scenario_generation_by_fuel_type</span><span class="p">):</span>
+        <span class="s2">&quot;Average emissions intensity for regulated generators each week&quot;</span>
+        
+        <span class="c1"># Total emissions each week</span>
+        <span class="n">df_weekly_emissions</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_weekly_emissions</span><span class="p">(</span><span class="n">scenario_total_emissions</span><span class="p">)</span>
+        
+        <span class="c1"># Weekly energy output from generators subject to the emissions reduction scheme</span>
+        <span class="n">df_weekly_regulated_generator_energy_output</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">scenario_generation_by_fuel_type</span><span class="p">)</span><span class="o">.</span><span class="n">T</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="s1">&#39;level_1&#39;</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">level</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">sort_index</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s1">&#39;level_0&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="o">.</span><span class="n">T</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="s1">&#39;level_1&#39;</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s1">&#39;level_0&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="o">.</span><span class="n">T</span>
+
+        <span class="c1"># Average weekly emissions intensity of regulated generators</span>
+        <span class="n">df_weekly_regulated_generators_emissions_intensity</span> <span class="o">=</span> <span class="n">df_weekly_emissions</span><span class="o">.</span><span class="n">div</span><span class="p">(</span><span class="n">df_weekly_regulated_generator_energy_output</span><span class="p">)</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">df_weekly_regulated_generators_emissions_intensity</span>
+
+    
+    <span class="k">def</span> <span class="nf">get_weekly_generation_by_fuel_type</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">scenario_generation_by_fuel_type</span><span class="p">):</span>
+        <span class="s2">&quot;Aggregate weekly energy output by fuel type&quot;</span>
+        
+        <span class="c1"># Generation by fuel type - regional and national statistics</span>
+        <span class="n">df_weekly_generation_by_fuel_type</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">scenario_generation_by_fuel_type</span><span class="p">)</span><span class="o">.</span><span class="n">T</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span><span class="o">.</span><span class="n">sort_index</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="s1">&#39;level_1&#39;</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s1">&#39;level_0&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+        
+        <span class="k">return</span> <span class="n">df_weekly_generation_by_fuel_type</span>
+    
+    
+<span class="c1"># # Class object used to process scenario results and produce weekly statistics</span>
+<span class="c1"># WeeklyResults = ProcessScenarioResults(data_dir, scenarios_dir)</span>
+
+<span class="c1"># # Average energy price each week - regional and national statistics</span>
+<span class="c1"># weekly_average_energy_price = WeeklyResults.get_weekly_average_energy_price(scenario_energy_revenue)</span>
+
+<span class="c1"># # Average system emissions intensity each week - regional and national statistics</span>
+<span class="c1"># weekly_system_emissions_intensity = WeeklyResults.get_weekly_system_emissions_intensity(scenario_total_emissions)</span>
+
+<span class="c1"># # Average emissions intensity of generators subject to emissions policy - regional and national statistics</span>
+<span class="c1"># weekly_regulated_generators_emissions_intensity = WeeklyResults.get_weekly_regulated_generators_emissions_intensity(scenario_total_emissions, scenario_generation_by_fuel_type)</span>
+
+<span class="c1"># # Generation by fuel type</span>
+<span class="c1"># weekly_generation_by_fuel_type = WeeklyResults.get_weekly_generation_by_fuel_type(scenario_generation_by_fuel_type)</span>
+
+<span class="c1"># plt.clf()</span>
+<span class="c1"># pd.DataFrame.from_dict({week: {&#39;baseline&#39;: baseline} for week, baseline in weekly_baseline.items()}, orient=&#39;index&#39;).plot()</span>
+<span class="c1"># plt.show()</span>
+
+<span class="c1"># plt.clf()</span>
+<span class="c1"># pd.DataFrame.from_dict(scenario_scheme_revenue, orient=&#39;index&#39;).reset_index().sort_index(axis=1).drop(&#39;level_1&#39;, axis=1).groupby(&#39;level_0&#39;).sum().cumsum()[&#39;NATIONAL&#39;].plot()</span>
+<span class="c1"># plt.show()</span>
+</pre></div>
+
+</div>
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div>
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<p>Used to compute statistics for each scenario</p>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[&nbsp;]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="c1">#     def get_scenario_total_emissions(self):</span>
+<span class="c1">#         &quot;&quot;&quot;Total emissions [tCO2] for each scenario</span>
+
+<span class="c1">#         Returns</span>
+<span class="c1">#         -------</span>
+<span class="c1">#         scenario_emissions : dict</span>
+<span class="c1">#             Total emissions for each NEM region and national level for given scenario    </span>
+<span class="c1">#         &quot;&quot;&quot;</span>
+
+<span class="c1">#         # Power output and emissions</span>
+<span class="c1">#         df = pd.DataFrame({&#39;p&#39;: self.model.p.get_values()}).mul(self.model.BASE_POWER.value).join(self.df_g[[&#39;EMISSIONS&#39;, &#39;NEM_REGION&#39;, &#39;FUEL_TYPE&#39;]], how=&#39;left&#39;)</span>
+
+<span class="c1">#         # Dictionary in which to store aggregate results</span>
+<span class="c1">#         emissions_scenario_results = dict()</span>
+
+<span class="c1">#         # Compute total emissions in each NEM region per hour</span>
+<span class="c1">#         df_emissions = df.groupby(&#39;NEM_REGION&#39;).apply(lambda x: x.prod(axis=1).sum())</span>
+
+<span class="c1">#         # Sum to find national total per hour</span>
+<span class="c1">#         df_emissions.loc[&#39;NATIONAL&#39;] = df_emissions.sum()</span>
+
+<span class="c1">#         # Multiply by scenario duration to find total emissions for scenario</span>
+<span class="c1">#         df_emissions = df_emissions.mul(self.df_scenarios.loc[(&#39;hours&#39;, &#39;duration&#39;), (self.week_index, self.scenario_index)])</span>
+
+<span class="c1">#         # Dictionary containing emissions data</span>
+<span class="c1">#         scenario_emissions = df_emissions.to_dict()</span>
+
+<span class="c1">#         return scenario_emissions</span>
+    
+    
+<span class="c1">#     def get_scenario_scheme_revenue(self):</span>
+<span class="c1">#         &quot;&quot;&quot;Scheme revenue for given scenario</span>
+        
+<span class="c1">#         Returns</span>
+<span class="c1">#         -------</span>
+<span class="c1">#         scenario_scheme_revenue : dict</span>
+<span class="c1">#             Scheme revenue for each NEM region as well as national total for given scenario        </span>
+<span class="c1">#         &quot;&quot;&quot;</span>
+
+<span class="c1">#         # Power output and emissions</span>
+<span class="c1">#         df = pd.DataFrame({&#39;p&#39;: self.model.p.get_values()}).mul(self.model.BASE_POWER.value).join(self.df_g[[&#39;EMISSIONS&#39;, &#39;NEM_REGION&#39;, &#39;FUEL_TYPE&#39;]], how=&#39;left&#39;)</span>
+
+<span class="c1">#         # Scheme revenue for each NEM region per hour</span>
+<span class="c1">#         df_scheme_revenue = df.groupby(&#39;NEM_REGION&#39;).apply(lambda x: x[&#39;EMISSIONS&#39;].subtract(self.model.PHI.value).mul(x[&#39;p&#39;]).sum())</span>
+
+<span class="c1">#         # Scheme revenue for nation per hour</span>
+<span class="c1">#         df_scheme_revenue.loc[&#39;NATIONAL&#39;] = df_scheme_revenue.sum()</span>
+
+<span class="c1">#         # Multiply by scenario duration to get total scheme revenue</span>
+<span class="c1">#         df_scheme_revenue = df_scheme_revenue.mul(self.df_scenarios.loc[(&#39;hours&#39;, &#39;duration&#39;), (self.week_index, self.scenario_index)])</span>
+
+<span class="c1">#         # Convert to dictionary</span>
+<span class="c1">#         scenario_scheme_revenue = df_scheme_revenue.to_dict()</span>
+        
+<span class="c1">#         return scenario_scheme_revenue</span>
+    
+    
+<span class="c1">#     def get_scenario_energy_revenue(self):</span>
+<span class="c1">#         &quot;&quot;&quot;Revenue obtained from energy sales for given scenario [$]</span>
+        
+<span class="c1">#         Returns</span>
+<span class="c1">#         -------</span>
+<span class="c1">#         scenario_energy_revenue : dict</span>
+<span class="c1">#             Revenue from energy sales for each NEM region as well as national total for given scenario        </span>
+<span class="c1">#         &quot;&quot;&quot;</span>
+        
+<span class="c1">#         # Revenue from energy sales</span>
+<span class="c1">#         # -------------------------</span>
+<span class="c1">#         df = pd.DataFrame.from_dict({n: [self.model.dual[self.model.POWER_BALANCE[n]] * self.model.BASE_POWER.value] for n in self.model.OMEGA_N}, columns=[&#39;price&#39;], orient=&#39;index&#39;)</span>
+
+<span class="c1">#         # Demand for given scenario</span>
+<span class="c1">#         df_demand = self.df_scenarios.loc[(&#39;demand&#39;), (self.week_index, self.scenario_index)]</span>
+<span class="c1">#         df_demand.name = &#39;demand&#39;</span>
+
+<span class="c1">#         # Total revenue from electricity sales per hour</span>
+<span class="c1">#         df_energy_revenue = df.join(df_demand).join(self.df_n[&#39;NEM_REGION&#39;], how=&#39;left&#39;).groupby(&#39;NEM_REGION&#39;).apply(lambda x: x[&#39;price&#39;].mul(x[&#39;demand&#39;]).sum())</span>
+<span class="c1">#         df_energy_revenue.loc[&#39;NATIONAL&#39;] = df_energy_revenue.sum()</span>
+
+<span class="c1">#         # Total revenue from energy sales</span>
+<span class="c1">#         df_energy_revenue = df_energy_revenue.mul(self.df_scenarios.loc[(&#39;hours&#39;, &#39;duration&#39;), (self.week_index, self.scenario_index)])</span>
+
+<span class="c1">#         # Add to energy revenue results dictionary</span>
+<span class="c1">#         scenario_energy_revenue = df_energy_revenue.to_dict()</span>
+        
+<span class="c1">#         return scenario_energy_revenue</span>
+
+
+<span class="c1">#     def get_scenario_generation_by_fuel_type(self):</span>
+<span class="c1">#         &quot;&quot;&quot;Generation by fuel type for each NEM region</span>
+
+<span class="c1">#         Returns</span>
+<span class="c1">#         -------</span>
+<span class="c1">#         scenario_generation_by_fuel_type : dict</span>
+<span class="c1">#             Total energy output [MWh] for each type of generating unit for each NEM region as well as national total</span>
+<span class="c1">#         &quot;&quot;&quot;</span>
+
+<span class="c1">#         # Power output</span>
+<span class="c1">#         df = pd.DataFrame({&#39;p&#39;: self.model.p.get_values()}).mul(self.model.BASE_POWER.value).join(self.df_g[[&#39;EMISSIONS&#39;, &#39;NEM_REGION&#39;, &#39;FUEL_TYPE&#39;]], how=&#39;left&#39;)</span>
+
+<span class="c1">#         # Energy output by fuel type for each NEM region [MWh]</span>
+<span class="c1">#         df_fuel_type_generation = df.groupby([&#39;NEM_REGION&#39;, &#39;FUEL_TYPE&#39;])[&#39;p&#39;].sum().mul(self.df_scenarios.loc[(&#39;hours&#39;, &#39;duration&#39;), (self.week_index, self.scenario_index)])</span>
+
+<span class="c1">#         # National total</span>
+<span class="c1">#         df_nation = df_fuel_type_generation.reset_index().groupby(&#39;FUEL_TYPE&#39;)[&#39;p&#39;].sum().reset_index()</span>
+<span class="c1">#         df_nation[&#39;NEM_REGION&#39;] = &#39;NATIONAL&#39;</span>
+
+<span class="c1">#         # Combine regional and national values and convert to dictionary</span>
+<span class="c1">#         scenario_generation_by_fuel_type = pd.concat([df_fuel_type_generation.reset_index(), df_nation], sort=False).set_index([&#39;NEM_REGION&#39;, &#39;FUEL_TYPE&#39;])[&#39;p&#39;].to_dict()</span>
+
+<span class="c1">#         return scenario_generation_by_fuel_type</span>
+    
+    
+<span class="c1">#     def get_scenario_energy_output(self):</span>
+<span class="c1">#         &quot;&quot;&quot;Energy output from dispatchable generators [MWh] for each NEM region and national total</span>
+        
+<span class="c1">#         Returns</span>
+<span class="c1">#         -------</span>
+<span class="c1">#         total_energy_output : pandas DataFrame</span>
+<span class="c1">#             Total energy output from all dispatchable generators under the emissions policy       </span>
+<span class="c1">#         &quot;&quot;&quot;</span>
+        
+<span class="c1">#         # Power output</span>
+<span class="c1">#         df = pd.DataFrame({&#39;p&#39;: self.model.p.get_values()}).mul(self.model.BASE_POWER.value).join(self.df_g[[&#39;NEM_REGION&#39;]], how=&#39;left&#39;)</span>
+
+<span class="c1">#         # Energy output by fuel type for each NEM region [MWh]</span>
+<span class="c1">#         df_energy_output = df.groupby([&#39;NEM_REGION&#39;])[&#39;p&#39;].sum().mul(self.df_scenarios.loc[(&#39;hours&#39;, &#39;duration&#39;), (self.week_index, self.scenario_index)])</span>
+
+<span class="c1">#         # Compute national total</span>
+<span class="c1">#         df_energy_output.loc[&#39;NATIONAL&#39;] = df_energy_output.sum()</span>
+
+<span class="c1">#         return df_energy_output</span>
+</pre></div>
+
+</div>
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div>
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<p>Find ID of price setting generator</p>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[&nbsp;]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="n">new_srmc</span> <span class="o">=</span> <span class="p">(</span><span class="n">DCOPF</span><span class="o">.</span><span class="n">df_g</span><span class="p">[</span><span class="s1">&#39;SRMC_2016-17&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="p">((</span><span class="n">DCOPF</span><span class="o">.</span><span class="n">df_g</span><span class="p">[</span><span class="s1">&#39;EMISSIONS&#39;</span><span class="p">]</span> <span class="o">*</span> <span class="n">permit_price</span><span class="p">)))</span> <span class="o">/</span> <span class="mi">100</span>
+<span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">scenario_nodal_prices</span><span class="p">)</span><span class="o">.</span><span class="n">applymap</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">new_srmc</span><span class="o">.</span><span class="n">subtract</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="o">.</span><span class="n">abs</span><span class="p">()</span><span class="o">.</span><span class="n">min</span><span class="p">())</span><span class="o">.</span><span class="n">max</span><span class="p">()</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+</pre></div>
+
+</div>
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div>
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<p>Compute weekly statistics given at regional and national levels from scenario results</p>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[&nbsp;]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># Generator output results</span>
+<span class="c1"># ------------------------</span>
+<span class="c1"># Power output from each generator for each time period</span>
+<span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">scenario_power_output</span><span class="p">)</span>
+
+<span class="c1"># Re-organise DataFrame so multi-index is removed, with individual columns containing week and scenario indices</span>
+<span class="n">df_o</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span><span class="o">.</span><span class="n">melt</span><span class="p">(</span><span class="n">id_vars</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;index&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;index&#39;</span><span class="p">:</span> <span class="s1">&#39;DUID&#39;</span><span class="p">,</span> <span class="s1">&#39;variable_0&#39;</span><span class="p">:</span> <span class="s1">&#39;week_index&#39;</span><span class="p">,</span> <span class="s1">&#39;variable_1&#39;</span><span class="p">:</span> <span class="s1">&#39;scenario_index&#39;</span><span class="p">,</span> <span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="s1">&#39;power_pu&#39;</span><span class="p">})</span>
+
+<span class="c1"># Get duration of each scenario</span>
+<span class="n">df_o</span><span class="p">[</span><span class="s1">&#39;duration_hrs&#39;</span><span class="p">]</span><span class="o">=</span> <span class="n">df_o</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">DCOPF</span><span class="o">.</span><span class="n">df_scenarios</span><span class="o">.</span><span class="n">loc</span><span class="p">[(</span><span class="s1">&#39;hours&#39;</span><span class="p">,</span> <span class="s1">&#39;duration&#39;</span><span class="p">),</span> <span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="s1">&#39;week_index&#39;</span><span class="p">],</span> <span class="n">x</span><span class="p">[</span><span class="s1">&#39;scenario_index&#39;</span><span class="p">])],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+<span class="c1"># Get emissions, NEM region, and fuel type for each DUID</span>
+<span class="n">df_o</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">df_o</span><span class="p">,</span> <span class="n">DCOPF</span><span class="o">.</span><span class="n">df_g</span><span class="p">[[</span><span class="s1">&#39;EMISSIONS&#39;</span><span class="p">,</span> <span class="s1">&#39;NEM_REGION&#39;</span><span class="p">,</span> <span class="s1">&#39;FUEL_TYPE&#39;</span><span class="p">]],</span> <span class="n">how</span><span class="o">=</span><span class="s1">&#39;left&#39;</span><span class="p">,</span> <span class="n">left_on</span><span class="o">=</span><span class="s1">&#39;DUID&#39;</span><span class="p">,</span> <span class="n">right_index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="c1"># Total energy output for each DUID and each scenario</span>
+<span class="n">df_o</span><span class="p">[</span><span class="s1">&#39;energy_MWh&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df_o</span><span class="p">[</span><span class="s1">&#39;power_pu&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">mul</span><span class="p">(</span><span class="mi">100</span><span class="p">)</span><span class="o">.</span><span class="n">mul</span><span class="p">(</span><span class="n">df_o</span><span class="p">[</span><span class="s1">&#39;duration_hrs&#39;</span><span class="p">])</span>
+
+<span class="c1"># Total emissions for each DUID and each scenario</span>
+<span class="n">df_o</span><span class="p">[</span><span class="s1">&#39;emissions_tCO2&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df_o</span><span class="p">[</span><span class="s1">&#39;energy_MWh&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">mul</span><span class="p">(</span><span class="n">df_o</span><span class="p">[</span><span class="s1">&#39;EMISSIONS&#39;</span><span class="p">])</span>
+
+
+<span class="c1"># Scenario information</span>
+<span class="c1"># --------------------</span>
+<span class="c1"># Copy original DataFrame</span>
+<span class="n">df_s</span> <span class="o">=</span> <span class="n">DCOPF</span><span class="o">.</span><span class="n">df_scenarios</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+<span class="c1"># Duration for each scenario</span>
+<span class="n">duration</span> <span class="o">=</span> <span class="n">df_s</span><span class="o">.</span><span class="n">loc</span><span class="p">[(</span><span class="s1">&#39;hours&#39;</span><span class="p">,</span> <span class="s1">&#39;duration&#39;</span><span class="p">)]</span>
+<span class="n">duration</span> <span class="o">=</span> <span class="n">duration</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+<span class="n">duration</span><span class="o">.</span><span class="n">columns</span> <span class="o">=</span> <span class="n">duration</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">droplevel</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+<span class="c1"># Fixed nodal injections and withdrawals (demand, hydro, and intermittent sources)</span>
+<span class="n">df_fixed</span> <span class="o">=</span> <span class="n">df_s</span><span class="o">.</span><span class="n">drop</span><span class="p">((</span><span class="s1">&#39;hours&#39;</span><span class="p">,</span> <span class="s1">&#39;duration&#39;</span><span class="p">))</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span><span class="o">.</span><span class="n">melt</span><span class="p">(</span><span class="n">id_vars</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;level&#39;</span><span class="p">,</span> <span class="s1">&#39;NODE_ID&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="s1">&#39;power_MW&#39;</span><span class="p">})</span><span class="o">.</span><span class="n">astype</span><span class="p">({</span><span class="s1">&#39;NODE_ID&#39;</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="s1">&#39;week&#39;</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="s1">&#39;scenario&#39;</span><span class="p">:</span> <span class="nb">int</span><span class="p">})</span>
+
+<span class="c1"># Merge duration for each operating scenario</span>
+<span class="n">df_fixed</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">df_fixed</span><span class="p">,</span> <span class="n">duration</span><span class="p">,</span> <span class="n">how</span><span class="o">=</span><span class="s1">&#39;left&#39;</span><span class="p">,</span> <span class="n">left_on</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;week&#39;</span><span class="p">,</span> <span class="s1">&#39;scenario&#39;</span><span class="p">],</span> <span class="n">right_on</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;week&#39;</span><span class="p">,</span> <span class="s1">&#39;scenario&#39;</span><span class="p">])</span>
+
+<span class="c1"># Compute total energy injection / withdrawal</span>
+<span class="n">df_fixed</span><span class="p">[</span><span class="s1">&#39;energy_MWh&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df_fixed</span><span class="p">[</span><span class="s1">&#39;power_MW&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">mul</span><span class="p">(</span><span class="n">df_fixed</span><span class="p">[</span><span class="s1">&#39;hours&#39;</span><span class="p">])</span>
+
+<span class="c1"># Merge NEM region IDs</span>
+<span class="n">df_fixed</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">df_fixed</span><span class="p">,</span> <span class="n">DCOPF</span><span class="o">.</span><span class="n">df_n</span><span class="p">[[</span><span class="s1">&#39;NEM_REGION&#39;</span><span class="p">]],</span> <span class="n">how</span><span class="o">=</span><span class="s1">&#39;left&#39;</span><span class="p">,</span> <span class="n">left_on</span><span class="o">=</span><span class="s1">&#39;NODE_ID&#39;</span><span class="p">,</span> <span class="n">right_index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="c1"># Aggregate fixed injections for each NEM region</span>
+<span class="n">df_reg_fixed</span> <span class="o">=</span> <span class="n">df_fixed</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="s1">&#39;NEM_REGION&#39;</span><span class="p">,</span> <span class="s1">&#39;week&#39;</span><span class="p">,</span> <span class="s1">&#39;level&#39;</span><span class="p">])[[</span><span class="s1">&#39;energy_MWh&#39;</span><span class="p">]]</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+
+<span class="c1"># Aggregate fixed injections for whole nation</span>
+<span class="n">df_nat_fixed</span> <span class="o">=</span> <span class="n">df_reg_fixed</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="s1">&#39;week&#39;</span><span class="p">,</span> <span class="s1">&#39;level&#39;</span><span class="p">])[[</span><span class="s1">&#39;energy_MWh&#39;</span><span class="p">]]</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+<span class="n">df_nat_fixed</span><span class="p">[</span><span class="s1">&#39;NEM_REGION&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;NATIONAL&#39;</span>
+
+<span class="c1"># Combine regional and national level statistics</span>
+<span class="n">df_com_fixed</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">df_reg_fixed</span><span class="p">,</span> <span class="n">df_nat_fixed</span><span class="p">],</span> <span class="n">sort</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span><span class="o">.</span><span class="n">set_index</span><span class="p">([</span><span class="s1">&#39;NEM_REGION&#39;</span><span class="p">,</span> <span class="s1">&#39;level&#39;</span><span class="p">,</span> <span class="s1">&#39;week&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">sort_index</span><span class="p">()</span>
+
+
+<span class="c1"># Weekly regional and national statistics</span>
+<span class="c1"># ---------------------------------------</span>
+<span class="c1"># Total energy output and emissions from regulated generators for each NEM region</span>
+<span class="n">df_reg</span> <span class="o">=</span> <span class="n">df_o</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="s1">&#39;week_index&#39;</span><span class="p">,</span> <span class="s1">&#39;NEM_REGION&#39;</span><span class="p">])[[</span><span class="s1">&#39;energy_MWh&#39;</span><span class="p">,</span> <span class="s1">&#39;emissions_tCO2&#39;</span><span class="p">]]</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+
+<span class="c1"># Total energy output and emissions from regulated generators for nation</span>
+<span class="n">df_nat</span> <span class="o">=</span> <span class="n">df_reg</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s1">&#39;week_index&#39;</span><span class="p">)[[</span><span class="s1">&#39;energy_MWh&#39;</span><span class="p">,</span> <span class="s1">&#39;emissions_tCO2&#39;</span><span class="p">]]</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+<span class="n">df_nat</span><span class="p">[</span><span class="s1">&#39;NEM_REGION&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;NATIONAL&#39;</span>
+
+<span class="c1"># Combined regional and national level statistics</span>
+<span class="n">df_com</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">df_reg</span><span class="p">,</span> <span class="n">df_nat</span><span class="p">],</span> <span class="n">sort</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span><span class="o">.</span><span class="n">set_index</span><span class="p">([</span><span class="s1">&#39;NEM_REGION&#39;</span><span class="p">,</span> <span class="s1">&#39;week_index&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">sort_index</span><span class="p">()</span>
+
+<span class="c1"># Average emissions intensity of regulated generators</span>
+<span class="n">df_com</span><span class="p">[</span><span class="s1">&#39;average_regulated_emissions_intensity&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df_com</span><span class="p">[</span><span class="s1">&#39;emissions_tCO2&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">div</span><span class="p">(</span><span class="n">df_com</span><span class="p">[</span><span class="s1">&#39;energy_MWh&#39;</span><span class="p">])</span>
+
+<span class="c1"># Energy demand each period</span>
+<span class="n">df_com</span><span class="p">[</span><span class="s1">&#39;demand_MWh&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df_com</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">df_com_fixed</span><span class="o">.</span><span class="n">loc</span><span class="p">[(</span><span class="n">x</span><span class="o">.</span><span class="n">name</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="s1">&#39;demand&#39;</span><span class="p">,</span> <span class="n">x</span><span class="o">.</span><span class="n">name</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span> <span class="s1">&#39;energy_MWh&#39;</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+<span class="c1"># Fixed energy injections from hydro sources</span>
+<span class="n">df_com</span><span class="p">[</span><span class="s1">&#39;hydro_MWh&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df_com</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">df_com_fixed</span><span class="o">.</span><span class="n">loc</span><span class="p">[(</span><span class="n">x</span><span class="o">.</span><span class="n">name</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="s1">&#39;hydro&#39;</span><span class="p">,</span> <span class="n">x</span><span class="o">.</span><span class="n">name</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span> <span class="s1">&#39;energy_MWh&#39;</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+<span class="c1"># Fixed energy injections from intermittent generators</span>
+<span class="n">df_com</span><span class="p">[</span><span class="s1">&#39;intermittent_MWh&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df_com</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">df_com_fixed</span><span class="o">.</span><span class="n">loc</span><span class="p">[(</span><span class="n">x</span><span class="o">.</span><span class="n">name</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="s1">&#39;intermittent&#39;</span><span class="p">,</span> <span class="n">x</span><span class="o">.</span><span class="n">name</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span> <span class="s1">&#39;energy_MWh&#39;</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+<span class="c1"># Check national energy demand and energy injections balance</span>
+<span class="n">df_com</span><span class="p">[</span><span class="s1">&#39;energy_MWh&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">df_com</span><span class="p">[</span><span class="s1">&#39;hydro_MWh&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">df_com</span><span class="p">[</span><span class="s1">&#39;intermittent_MWh&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">subtract</span><span class="p">(</span><span class="n">df_com</span><span class="p">[</span><span class="s1">&#39;demand_MWh&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="s1">&#39;NATIONAL&#39;</span><span class="p">]</span>
+
+<span class="c1"># Average system emissions intensity (total emissions / total demand)</span>
+<span class="n">df_com</span><span class="p">[</span><span class="s1">&#39;average_system_emissions_intensity&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df_com</span><span class="p">[</span><span class="s1">&#39;emissions_tCO2&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">div</span><span class="p">(</span><span class="n">df_com</span><span class="p">[</span><span class="s1">&#39;demand_MWh&#39;</span><span class="p">])</span>
+</pre></div>
+
+</div>
+</div>
+</div>
+
+</div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
 <div class="prompt input_prompt">In&nbsp;[1]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="kn">import</span> <span class="nn">os</span>
-<span class="kn">import</span> <span class="nn">pickle</span>
-<span class="kn">from</span> <span class="nn">math</span> <span class="k">import</span> <span class="n">pi</span>
-
-<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
-<span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
-
-<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
-<span class="kn">from</span> <span class="nn">pyomo.environ</span> <span class="k">import</span> <span class="o">*</span>
-
-
-<span class="k">class</span> <span class="nc">RawData</span><span class="p">:</span>
-    <span class="s2">&quot;Load raw data to be used in model&quot;</span>
-    
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data_dir</span><span class="p">,</span> <span class="n">scenarios_dir</span><span class="p">):</span>
-        
-        <span class="c1"># Paths to directories</span>
-        <span class="c1"># --------------------</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">data_dir</span> <span class="o">=</span> <span class="n">data_dir</span>
-        
-        
-        <span class="c1"># Network data</span>
-        <span class="c1"># ------------</span>
-        <span class="c1"># Nodes</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">df_n</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data_dir</span><span class="p">,</span> <span class="s1">&#39;network_nodes.csv&#39;</span><span class="p">),</span> <span class="n">index_col</span><span class="o">=</span><span class="s1">&#39;NODE_ID&#39;</span><span class="p">)</span>
-
-        <span class="c1"># AC edges</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">df_e</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data_dir</span><span class="p">,</span> <span class="s1">&#39;network_edges.csv&#39;</span><span class="p">),</span> <span class="n">index_col</span><span class="o">=</span><span class="s1">&#39;LINE_ID&#39;</span><span class="p">)</span>
-
-        <span class="c1"># HVDC links</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">df_hvdc_links</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data_dir</span><span class="p">,</span> <span class="s1">&#39;network_hvdc_links.csv&#39;</span><span class="p">),</span> <span class="n">index_col</span><span class="o">=</span><span class="s1">&#39;HVDC_LINK_ID&#39;</span><span class="p">)</span>
-
-        <span class="c1"># AC interconnector links</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">df_ac_i_links</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data_dir</span><span class="p">,</span> <span class="s1">&#39;network_ac_interconnector_links.csv&#39;</span><span class="p">),</span> <span class="n">index_col</span><span class="o">=</span><span class="s1">&#39;INTERCONNECTOR_ID&#39;</span><span class="p">)</span>
-
-        <span class="c1"># AC interconnector flow limits</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">df_ac_i_limits</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data_dir</span><span class="p">,</span> <span class="s1">&#39;network_ac_interconnector_flow_limits.csv&#39;</span><span class="p">),</span> <span class="n">index_col</span><span class="o">=</span><span class="s1">&#39;INTERCONNECTOR_ID&#39;</span><span class="p">)</span>
-
-
-        <span class="c1"># Generators</span>
-        <span class="c1"># ----------       </span>
-        <span class="c1"># Generating unit information</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">df_g</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data_dir</span><span class="p">,</span> <span class="s1">&#39;generators.csv&#39;</span><span class="p">),</span> <span class="n">index_col</span><span class="o">=</span><span class="s1">&#39;DUID&#39;</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;NODE&#39;</span><span class="p">:</span> <span class="nb">int</span><span class="p">})</span>
-        
-        <span class="c1"># Perturb short-run marginal costs (SRMCs) so all unique </span>
-        <span class="c1"># (add uniformly distributed random number between 0 and 2 to each SRMC)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">df_g</span><span class="p">[</span><span class="s1">&#39;SRMC_2016-17&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">df_g</span><span class="p">[</span><span class="s1">&#39;SRMC_2016-17&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">df_g</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
-        
-        
-        <span class="c1"># Load scenario data</span>
-        <span class="c1"># ------------------</span>
-        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">scenarios_dir</span><span class="p">,</span> <span class="s1">&#39;weekly_scenarios.pickle&#39;</span><span class="p">),</span> <span class="s1">&#39;rb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">df_scenarios</span> <span class="o">=</span> <span class="n">pickle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
-        
-
-<span class="k">class</span> <span class="nc">OrganiseData</span><span class="p">(</span><span class="n">RawData</span><span class="p">):</span>
-    <span class="s2">&quot;Organise data to be used in mathematical program&quot;</span>
-    
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data_dir</span><span class="p">,</span> <span class="n">scenarios_dir</span><span class="p">):</span>
-        <span class="c1"># Load model data</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">data_dir</span><span class="p">,</span> <span class="n">scenarios_dir</span><span class="p">)</span>
-        
-        
-    <span class="k">def</span> <span class="nf">get_admittance_matrix</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="s2">&quot;Construct admittance matrix for network&quot;</span>
-
-        <span class="c1"># Initialise dataframe</span>
-        <span class="n">df_Y</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="mi">0</span><span class="n">j</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">df_n</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">df_n</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
-
-        <span class="c1"># Off-diagonal elements</span>
-        <span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="n">row</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">df_e</span><span class="o">.</span><span class="n">iterrows</span><span class="p">():</span>
-            <span class="n">fn</span><span class="p">,</span> <span class="n">tn</span> <span class="o">=</span> <span class="n">row</span><span class="p">[</span><span class="s1">&#39;FROM_NODE&#39;</span><span class="p">],</span> <span class="n">row</span><span class="p">[</span><span class="s1">&#39;TO_NODE&#39;</span><span class="p">]</span>
-            <span class="n">df_Y</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">fn</span><span class="p">,</span> <span class="n">tn</span><span class="p">]</span> <span class="o">+=</span> <span class="o">-</span> <span class="p">(</span><span class="mi">1</span> <span class="o">/</span> <span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;R_PU&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span><span class="n">j</span> <span class="o">*</span> <span class="n">row</span><span class="p">[</span><span class="s1">&#39;X_PU&#39;</span><span class="p">]))</span> <span class="o">*</span> <span class="n">row</span><span class="p">[</span><span class="s1">&#39;NUM_LINES&#39;</span><span class="p">]</span>
-            <span class="n">df_Y</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">tn</span><span class="p">,</span> <span class="n">fn</span><span class="p">]</span> <span class="o">+=</span> <span class="o">-</span> <span class="p">(</span><span class="mi">1</span> <span class="o">/</span> <span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;R_PU&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span><span class="n">j</span> <span class="o">*</span> <span class="n">row</span><span class="p">[</span><span class="s1">&#39;X_PU&#39;</span><span class="p">]))</span> <span class="o">*</span> <span class="n">row</span><span class="p">[</span><span class="s1">&#39;NUM_LINES&#39;</span><span class="p">]</span>
-
-        <span class="c1"># Diagonal elements</span>
-        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">df_n</span><span class="o">.</span><span class="n">index</span><span class="p">:</span>
-            <span class="n">df_Y</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span> <span class="n">df_Y</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="p">:]</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
-
-        <span class="c1"># Add shunt susceptance to diagonal elements</span>
-        <span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="n">row</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">df_e</span><span class="o">.</span><span class="n">iterrows</span><span class="p">():</span>
-            <span class="n">fn</span><span class="p">,</span> <span class="n">tn</span> <span class="o">=</span> <span class="n">row</span><span class="p">[</span><span class="s1">&#39;FROM_NODE&#39;</span><span class="p">],</span> <span class="n">row</span><span class="p">[</span><span class="s1">&#39;TO_NODE&#39;</span><span class="p">]</span>
-            <span class="n">df_Y</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">fn</span><span class="p">,</span> <span class="n">fn</span><span class="p">]</span> <span class="o">+=</span> <span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;B_PU&#39;</span><span class="p">]</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span> <span class="o">*</span> <span class="n">row</span><span class="p">[</span><span class="s1">&#39;NUM_LINES&#39;</span><span class="p">]</span>
-            <span class="n">df_Y</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">tn</span><span class="p">,</span> <span class="n">tn</span><span class="p">]</span> <span class="o">+=</span> <span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;B_PU&#39;</span><span class="p">]</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span> <span class="o">*</span> <span class="n">row</span><span class="p">[</span><span class="s1">&#39;NUM_LINES&#39;</span><span class="p">]</span>
-
-        <span class="k">return</span> <span class="n">df_Y</span>
-    
-    
-    <span class="k">def</span> <span class="nf">get_HVDC_incidence_matrix</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="s2">&quot;Incidence matrix for HVDC links&quot;</span>
-        
-        <span class="c1"># Incidence matrix for HVDC links</span>
-        <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">df_n</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">df_hvdc_links</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
-
-        <span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="n">row</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">df_hvdc_links</span><span class="o">.</span><span class="n">iterrows</span><span class="p">():</span>
-            <span class="c1"># From nodes assigned a value of 1</span>
-            <span class="n">df</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;FROM_NODE&#39;</span><span class="p">],</span> <span class="n">index</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
-
-            <span class="c1"># To nodes assigned a value of -1</span>
-            <span class="n">df</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;TO_NODE&#39;</span><span class="p">],</span> <span class="n">index</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
-        
-        <span class="k">return</span> <span class="n">df</span>
-    
-    
-    <span class="k">def</span> <span class="nf">get_all_ac_edges</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="s2">&quot;Tuples defining from and to nodes for all AC edges (forward and reverse)&quot;</span>
-        
-        <span class="c1"># Set of all AC edges</span>
-        <span class="n">edge_set</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
-        
-        <span class="c1"># Loop through edges, add forward and reverse direction indice tuples to set</span>
-        <span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="n">row</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">df_e</span><span class="o">.</span><span class="n">iterrows</span><span class="p">():</span>
-            <span class="n">edge_set</span><span class="o">.</span><span class="n">add</span><span class="p">((</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;FROM_NODE&#39;</span><span class="p">],</span> <span class="n">row</span><span class="p">[</span><span class="s1">&#39;TO_NODE&#39;</span><span class="p">]))</span>
-            <span class="n">edge_set</span><span class="o">.</span><span class="n">add</span><span class="p">((</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;TO_NODE&#39;</span><span class="p">],</span> <span class="n">row</span><span class="p">[</span><span class="s1">&#39;FROM_NODE&#39;</span><span class="p">]))</span>
-        
-        <span class="k">return</span> <span class="n">edge_set</span>
-    
-    
-    <span class="k">def</span> <span class="nf">get_network_graph</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="s2">&quot;Graph containing connections between all network nodes&quot;</span>
-        <span class="n">network_graph</span> <span class="o">=</span> <span class="p">{</span><span class="n">n</span><span class="p">:</span> <span class="nb">set</span><span class="p">()</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">df_n</span><span class="o">.</span><span class="n">index</span><span class="p">}</span>
-
-        <span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="n">row</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">df_e</span><span class="o">.</span><span class="n">iterrows</span><span class="p">():</span>
-            <span class="n">network_graph</span><span class="p">[</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;FROM_NODE&#39;</span><span class="p">]]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;TO_NODE&#39;</span><span class="p">])</span>
-            <span class="n">network_graph</span><span class="p">[</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;TO_NODE&#39;</span><span class="p">]]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;FROM_NODE&#39;</span><span class="p">])</span>
-        
-        <span class="k">return</span> <span class="n">network_graph</span>
-    
-    
-    <span class="k">def</span> <span class="nf">get_all_dispatchable_fossil_generator_duids</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="s2">&quot;Fossil dispatch generator DUIDs&quot;</span>
-        
-        <span class="c1"># Filter - keeping only fossil and scheduled generators</span>
-        <span class="n">mask</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">df_g</span><span class="p">[</span><span class="s1">&#39;FUEL_CAT&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;Fossil&#39;</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">df_g</span><span class="p">[</span><span class="s1">&#39;SCHEDULE_TYPE&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;SCHEDULED&#39;</span><span class="p">)</span>
-        
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">df_g</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span><span class="o">.</span><span class="n">index</span>    
-       
-    
-    <span class="k">def</span> <span class="nf">get_reference_nodes</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="s2">&quot;Get reference node IDs&quot;</span>
-        
-        <span class="c1"># Filter Regional Reference Nodes (RRNs) in Tasmania and Victoria.</span>
-        <span class="n">mask</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">df_n</span><span class="p">[</span><span class="s1">&#39;RRN&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">df_n</span><span class="p">[</span><span class="s1">&#39;NEM_REGION&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">([</span><span class="s1">&#39;TAS1&#39;</span><span class="p">,</span> <span class="s1">&#39;VIC1&#39;</span><span class="p">]))</span>
-        <span class="n">reference_node_ids</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">df_n</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span><span class="o">.</span><span class="n">index</span>
-        
-        <span class="k">return</span> <span class="n">reference_node_ids</span>
-    
-       
-    <span class="k">def</span> <span class="nf">get_generator_node_map</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">generators</span><span class="p">):</span>
-        <span class="s2">&quot;Get set of generators connected to each node&quot;</span>
-        
-        <span class="n">generator_node_map</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">df_g</span><span class="o">.</span><span class="n">reindex</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="n">generators</span><span class="p">)</span>
-                              <span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
-                              <span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;OMEGA_G&#39;</span><span class="p">:</span> <span class="s1">&#39;DUID&#39;</span><span class="p">})</span>
-                              <span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s1">&#39;NODE&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">agg</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="nb">set</span><span class="p">(</span><span class="n">x</span><span class="p">))[</span><span class="s1">&#39;DUID&#39;</span><span class="p">]</span>
-                              <span class="o">.</span><span class="n">reindex</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">df_n</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="n">fill_value</span><span class="o">=</span><span class="nb">set</span><span class="p">()))</span>
-        
-        <span class="k">return</span> <span class="n">generator_node_map</span>
-    
-    
-    <span class="k">def</span> <span class="nf">get_ac_interconnector_summary</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="s2">&quot;Summarise aggregate flow limit information for AC interconnectors&quot;</span>
-
-        <span class="c1"># Create dicitionary containing collections of AC branches for which interconnectors are defined. Create</span>
-        <span class="c1"># These collections for both forward and reverse directions.</span>
-        <span class="n">interconnector_limits</span> <span class="o">=</span> <span class="p">{}</span>
-
-        <span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="n">row</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">df_ac_i_limits</span><span class="o">.</span><span class="n">iterrows</span><span class="p">():</span>
-            <span class="c1"># Forward limit</span>
-            <span class="n">interconnector_limits</span><span class="p">[</span><span class="n">index</span><span class="o">+</span><span class="s1">&#39;-FORWARD&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;FROM_REGION&#39;</span><span class="p">:</span> <span class="n">row</span><span class="p">[</span><span class="s1">&#39;FROM_REGION&#39;</span><span class="p">],</span> <span class="s1">&#39;TO_REGION&#39;</span><span class="p">:</span> <span class="n">row</span><span class="p">[</span><span class="s1">&#39;TO_REGION&#39;</span><span class="p">],</span> <span class="s1">&#39;LIMIT&#39;</span><span class="p">:</span> <span class="n">row</span><span class="p">[</span><span class="s1">&#39;FORWARD_LIMIT_MW&#39;</span><span class="p">]}</span>
-
-            <span class="c1"># Reverse limit</span>
-            <span class="n">interconnector_limits</span><span class="p">[</span><span class="n">index</span><span class="o">+</span><span class="s1">&#39;-REVERSE&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;FROM_REGION&#39;</span><span class="p">:</span> <span class="n">row</span><span class="p">[</span><span class="s1">&#39;TO_REGION&#39;</span><span class="p">],</span> <span class="s1">&#39;TO_REGION&#39;</span><span class="p">:</span> <span class="n">row</span><span class="p">[</span><span class="s1">&#39;FROM_REGION&#39;</span><span class="p">],</span> <span class="s1">&#39;LIMIT&#39;</span><span class="p">:</span> <span class="n">row</span><span class="p">[</span><span class="s1">&#39;REVERSE_LIMIT_MW&#39;</span><span class="p">]}</span>
-
-        <span class="c1"># Convert to DataFrame</span>
-        <span class="n">df_interconnector_limits</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">interconnector_limits</span><span class="p">)</span><span class="o">.</span><span class="n">T</span>
-
-        <span class="c1"># Find all branches that consitute each interconnector - order is important. </span>
-        <span class="c1"># First element is &#39;from&#39; node, second is &#39;to node</span>
-        <span class="n">branch_collections</span> <span class="o">=</span> <span class="p">{</span><span class="n">b</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;branches&#39;</span><span class="p">:</span> <span class="nb">list</span><span class="p">()}</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">df_interconnector_limits</span><span class="o">.</span><span class="n">index</span><span class="p">}</span>
-
-        <span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="n">row</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">df_ac_i_links</span><span class="o">.</span><span class="n">iterrows</span><span class="p">():</span>
-            <span class="c1"># For a given branch, find the interconnector index to which it belongs. This will either be the forward or</span>
-            <span class="c1"># reverse direction as defined in the interconnector links DataFrame. If the forward direction, &#39;FROM_REGION&#39;</span>
-            <span class="c1"># will match between DataFrames, else it indicates the link is in the reverse direction.</span>
-
-            <span class="c1"># Assign branch to forward interconnector limit ID</span>
-            <span class="n">mask_forward</span> <span class="o">=</span> <span class="p">(</span><span class="n">df_interconnector_limits</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">str</span><span class="o">.</span><span class="n">contains</span><span class="p">(</span><span class="n">index</span><span class="p">)</span> 
-                      <span class="o">&amp;</span> <span class="p">(</span><span class="n">df_interconnector_limits</span><span class="p">[</span><span class="s1">&#39;FROM_REGION&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">row</span><span class="p">[</span><span class="s1">&#39;FROM_REGION&#39;</span><span class="p">])</span> 
-                      <span class="o">&amp;</span> <span class="p">(</span><span class="n">df_interconnector_limits</span><span class="p">[</span><span class="s1">&#39;TO_REGION&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">row</span><span class="p">[</span><span class="s1">&#39;TO_REGION&#39;</span><span class="p">]))</span>
-
-            <span class="c1"># Interconnector ID corresponding to branch </span>
-            <span class="n">branch_index_forward</span> <span class="o">=</span> <span class="n">df_interconnector_limits</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">mask_forward</span><span class="p">]</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-
-            <span class="c1"># Add branch tuple to branch collection</span>
-            <span class="n">branch_collections</span><span class="p">[</span><span class="n">branch_index_forward</span><span class="p">][</span><span class="s1">&#39;branches&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;FROM_NODE&#39;</span><span class="p">],</span> <span class="n">row</span><span class="p">[</span><span class="s1">&#39;TO_NODE&#39;</span><span class="p">]))</span>
-
-            <span class="c1"># Assign branch to reverse interconnector limit ID</span>
-            <span class="n">mask_reverse</span> <span class="o">=</span> <span class="p">(</span><span class="n">df_interconnector_limits</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">str</span><span class="o">.</span><span class="n">contains</span><span class="p">(</span><span class="n">index</span><span class="p">)</span> 
-                            <span class="o">&amp;</span> <span class="p">(</span><span class="n">df_interconnector_limits</span><span class="p">[</span><span class="s1">&#39;FROM_REGION&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">row</span><span class="p">[</span><span class="s1">&#39;TO_REGION&#39;</span><span class="p">])</span> 
-                            <span class="o">&amp;</span> <span class="p">(</span><span class="n">df_interconnector_limits</span><span class="p">[</span><span class="s1">&#39;TO_REGION&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">row</span><span class="p">[</span><span class="s1">&#39;FROM_REGION&#39;</span><span class="p">]))</span>
-
-            <span class="c1"># Interconnector ID corresponding to branch </span>
-            <span class="n">branch_index_reverse</span> <span class="o">=</span> <span class="n">df_interconnector_limits</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">mask_reverse</span><span class="p">]</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-
-            <span class="c1"># Add branch tuple to branch collection</span>
-            <span class="n">branch_collections</span><span class="p">[</span><span class="n">branch_index_reverse</span><span class="p">][</span><span class="s1">&#39;branches&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;TO_NODE&#39;</span><span class="p">],</span> <span class="n">row</span><span class="p">[</span><span class="s1">&#39;FROM_NODE&#39;</span><span class="p">]))</span>
-
-        <span class="c1"># Append branch collections to interconnector limits DataFrame</span>
-        <span class="n">df_interconnector_limits</span><span class="p">[</span><span class="s1">&#39;branches&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">branch_collections</span><span class="p">)</span><span class="o">.</span><span class="n">T</span><span class="p">[</span><span class="s1">&#39;branches&#39;</span><span class="p">]</span>
-        
-        <span class="k">return</span> <span class="n">df_interconnector_limits</span>
-
-    
-<span class="k">class</span> <span class="nc">DCOPFModel</span><span class="p">(</span><span class="n">OrganiseData</span><span class="p">):</span>
-    <span class="s2">&quot;Create DCOPF model&quot;</span>
-    
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data_dir</span><span class="p">,</span> <span class="n">scenarios_dir</span><span class="p">):</span>
-        <span class="c1"># Load model data</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">data_dir</span><span class="p">,</span> <span class="n">scenarios_dir</span><span class="p">)</span>
-        
-        <span class="c1"># Initialise DCOPF model</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">create_model</span><span class="p">()</span>
-        
-        
-        <span class="c1"># Setup solver</span>
-        <span class="c1"># ------------</span>
-        <span class="c1"># Import dual variables</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">dual</span> <span class="o">=</span> <span class="n">Suffix</span><span class="p">(</span><span class="n">direction</span><span class="o">=</span><span class="n">Suffix</span><span class="o">.</span><span class="n">IMPORT</span><span class="p">)</span>
-        
-        <span class="c1"># Specify solver to be used and output format</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">opt</span> <span class="o">=</span> <span class="n">SolverFactory</span><span class="p">(</span><span class="s1">&#39;gurobi&#39;</span><span class="p">,</span> <span class="n">solver_io</span><span class="o">=</span><span class="s1">&#39;mps&#39;</span><span class="p">)</span>
-        
-        
-        <span class="c1"># Parameters used for different scenarios</span>
-        <span class="c1"># ---------------------------------------</span>
-        <span class="c1"># Week index</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">week_index</span> <span class="o">=</span> <span class="kc">None</span>
-        
-        <span class="c1"># Scenario index</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">scenario_index</span> <span class="o">=</span> <span class="kc">None</span>
-        
-        
-    <span class="k">def</span> <span class="nf">create_model</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="s2">&quot;Create model object&quot;</span>
-
-        <span class="c1"># Initialise model</span>
-        <span class="n">model</span> <span class="o">=</span> <span class="n">ConcreteModel</span><span class="p">()</span>
-
-        <span class="c1"># Sets</span>
-        <span class="c1"># ----   </span>
-        <span class="c1"># Nodes</span>
-        <span class="n">model</span><span class="o">.</span><span class="n">OMEGA_N</span> <span class="o">=</span> <span class="n">Set</span><span class="p">(</span><span class="n">initialize</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">df_n</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
-
-        <span class="c1"># Generators</span>
-        <span class="n">model</span><span class="o">.</span><span class="n">OMEGA_G</span> <span class="o">=</span> <span class="n">Set</span><span class="p">(</span><span class="n">initialize</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">get_all_dispatchable_fossil_generator_duids</span><span class="p">())</span>
-
-        <span class="c1"># AC edges</span>
-        <span class="n">ac_edges</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_all_ac_edges</span><span class="p">()</span>
-        <span class="n">model</span><span class="o">.</span><span class="n">OMEGA_NM</span> <span class="o">=</span> <span class="n">Set</span><span class="p">(</span><span class="n">initialize</span><span class="o">=</span><span class="n">ac_edges</span><span class="p">)</span>
-
-        <span class="c1"># Sets of branches for which aggregate AC interconnector limits are defined</span>
-        <span class="n">ac_limits</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_ac_interconnector_summary</span><span class="p">()</span>
-        <span class="n">model</span><span class="o">.</span><span class="n">OMEGA_J</span> <span class="o">=</span> <span class="n">Set</span><span class="p">(</span><span class="n">initialize</span><span class="o">=</span><span class="n">ac_limits</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
-
-        <span class="c1"># HVDC links</span>
-        <span class="n">model</span><span class="o">.</span><span class="n">OMEGA_H</span> <span class="o">=</span> <span class="n">Set</span><span class="p">(</span><span class="n">initialize</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">df_hvdc_links</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
-
-
-        <span class="c1"># Parameters</span>
-        <span class="c1"># ----------</span>
-        <span class="c1"># System base power</span>
-        <span class="n">model</span><span class="o">.</span><span class="n">BASE_POWER</span> <span class="o">=</span> <span class="n">Param</span><span class="p">(</span><span class="n">initialize</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
-
-        <span class="c1"># Emissions intensity baseline</span>
-        <span class="n">model</span><span class="o">.</span><span class="n">PHI</span> <span class="o">=</span> <span class="n">Param</span><span class="p">(</span><span class="n">initialize</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">mutable</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-
-        <span class="c1"># Permit price</span>
-        <span class="n">model</span><span class="o">.</span><span class="n">TAU</span> <span class="o">=</span> <span class="n">Param</span><span class="p">(</span><span class="n">initialize</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">mutable</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-
-        <span class="c1"># Generator emissions intensities</span>
-        <span class="k">def</span> <span class="nf">E_RULE</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">g</span><span class="p">):</span>
-            <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">df_g</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">g</span><span class="p">,</span> <span class="s1">&#39;EMISSIONS&#39;</span><span class="p">])</span>
-        <span class="n">model</span><span class="o">.</span><span class="n">E</span> <span class="o">=</span> <span class="n">Param</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">OMEGA_G</span><span class="p">,</span> <span class="n">rule</span><span class="o">=</span><span class="n">E_RULE</span><span class="p">)</span>
-
-        <span class="c1"># Admittance matrix</span>
-        <span class="n">admittance_matrix</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_admittance_matrix</span><span class="p">()</span>
-        <span class="k">def</span> <span class="nf">B_RULE</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">m</span><span class="p">):</span>
-            <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">imag</span><span class="p">(</span><span class="n">admittance_matrix</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">n</span><span class="p">,</span> <span class="n">m</span><span class="p">]))</span>
-        <span class="n">model</span><span class="o">.</span><span class="n">B</span> <span class="o">=</span> <span class="n">Param</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">OMEGA_NM</span><span class="p">,</span> <span class="n">rule</span><span class="o">=</span><span class="n">B_RULE</span><span class="p">)</span>
-
-        <span class="c1"># Reference nodes</span>
-        <span class="n">reference_nodes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_reference_nodes</span><span class="p">()</span>
-        <span class="k">def</span> <span class="nf">S_RULE</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">n</span><span class="p">):</span>
-            <span class="k">if</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">reference_nodes</span><span class="p">:</span>
-                <span class="k">return</span> <span class="mi">1</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="k">return</span> <span class="mi">0</span>
-        <span class="n">model</span><span class="o">.</span><span class="n">S</span> <span class="o">=</span> <span class="n">Param</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">OMEGA_N</span><span class="p">,</span> <span class="n">rule</span><span class="o">=</span><span class="n">S_RULE</span><span class="p">)</span>
-
-        <span class="c1"># Generator short-run marginal costs</span>
-        <span class="k">def</span> <span class="nf">C_RULE</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">g</span><span class="p">):</span>
-            <span class="n">marginal_cost</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">df_g</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">g</span><span class="p">,</span> <span class="s1">&#39;SRMC_2016-17&#39;</span><span class="p">])</span>
-            <span class="k">return</span> <span class="n">marginal_cost</span> <span class="o">/</span> <span class="n">model</span><span class="o">.</span><span class="n">BASE_POWER</span>
-        <span class="n">model</span><span class="o">.</span><span class="n">C</span> <span class="o">=</span> <span class="n">Param</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">OMEGA_G</span><span class="p">,</span> <span class="n">rule</span><span class="o">=</span><span class="n">C_RULE</span><span class="p">)</span>
-
-        <span class="c1"># Demand</span>
-        <span class="n">model</span><span class="o">.</span><span class="n">D</span> <span class="o">=</span> <span class="n">Param</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">OMEGA_N</span><span class="p">,</span> <span class="n">initialize</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">mutable</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-
-        <span class="c1"># Max voltage angle difference between connected nodes</span>
-        <span class="n">model</span><span class="o">.</span><span class="n">THETA_DELTA</span> <span class="o">=</span> <span class="n">Param</span><span class="p">(</span><span class="n">initialize</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">pi</span> <span class="o">/</span> <span class="mi">2</span><span class="p">))</span>
-
-        <span class="c1"># HVDC incidence matrix</span>
-        <span class="n">hvdc_incidence_matrix</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_HVDC_incidence_matrix</span><span class="p">()</span>
-        <span class="k">def</span> <span class="nf">K_RULE</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">h</span><span class="p">):</span>
-            <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">hvdc_incidence_matrix</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">n</span><span class="p">,</span> <span class="n">h</span><span class="p">])</span>
-        <span class="n">model</span><span class="o">.</span><span class="n">K</span> <span class="o">=</span> <span class="n">Param</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">OMEGA_N</span><span class="p">,</span> <span class="n">model</span><span class="o">.</span><span class="n">OMEGA_H</span><span class="p">,</span> <span class="n">rule</span><span class="o">=</span><span class="n">K_RULE</span><span class="p">)</span>    
-
-        <span class="c1"># Aggregate AC interconnector flow limits</span>
-        <span class="k">def</span> <span class="nf">F_RULE</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">j</span><span class="p">):</span>
-            <span class="n">power_flow_limit</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">ac_limits</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">j</span><span class="p">,</span> <span class="s1">&#39;LIMIT&#39;</span><span class="p">])</span>
-            <span class="k">return</span> <span class="n">power_flow_limit</span> <span class="o">/</span> <span class="n">model</span><span class="o">.</span><span class="n">BASE_POWER</span>
-        <span class="n">model</span><span class="o">.</span><span class="n">F</span> <span class="o">=</span> <span class="n">Param</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">OMEGA_J</span><span class="p">,</span> <span class="n">rule</span><span class="o">=</span><span class="n">F_RULE</span><span class="p">)</span>
-
-        <span class="c1"># Fixed power injections</span>
-        <span class="n">model</span><span class="o">.</span><span class="n">R</span> <span class="o">=</span> <span class="n">Param</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">OMEGA_N</span><span class="p">,</span> <span class="n">initialize</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">mutable</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-        
-        <span class="c1"># Maximum power output</span>
-        <span class="k">def</span> <span class="nf">REGISTERED_CAPACITY_RULE</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">g</span><span class="p">):</span>
-            <span class="n">registered_capacity</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">df_g</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">g</span><span class="p">,</span> <span class="s1">&#39;REG_CAP&#39;</span><span class="p">])</span>
-            <span class="k">return</span> <span class="n">registered_capacity</span> <span class="o">/</span> <span class="n">model</span><span class="o">.</span><span class="n">BASE_POWER</span>
-        <span class="n">model</span><span class="o">.</span><span class="n">REGISTERED_CAPACITY</span> <span class="o">=</span> <span class="n">Param</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">OMEGA_G</span><span class="p">,</span> <span class="n">rule</span><span class="o">=</span><span class="n">REGISTERED_CAPACITY_RULE</span><span class="p">)</span>
-
-        <span class="c1"># Generation shock indicator parameter (=0 if generation shock specified, </span>
-        <span class="c1"># else equals 1 if normal operation). Initialize value to 1 (normal operation)</span>
-        <span class="n">model</span><span class="o">.</span><span class="n">GENERATION_SHOCK_INDICATOR</span> <span class="o">=</span> <span class="n">Param</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">OMEGA_G</span><span class="p">,</span> <span class="n">initialize</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">mutable</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-        
-        <span class="c1"># Emissions intensity shock indicator parameter. Used to scale original emissions intensities.</span>
-        <span class="n">model</span><span class="o">.</span><span class="n">EMISSIONS_INTENSITY_SHOCK_FACTOR</span> <span class="o">=</span> <span class="n">Param</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">OMEGA_G</span><span class="p">,</span> <span class="n">initialize</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">mutable</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-        
-        
-        <span class="c1"># Variables</span>
-        <span class="c1"># ---------</span>
-        <span class="c1"># Generator output (constrained to non-negative values)</span>
-        <span class="n">model</span><span class="o">.</span><span class="n">p</span> <span class="o">=</span> <span class="n">Var</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">OMEGA_G</span><span class="p">,</span> <span class="n">within</span><span class="o">=</span><span class="n">NonNegativeReals</span><span class="p">)</span>
-
-        <span class="c1"># HVDC flows</span>
-        <span class="k">def</span> <span class="nf">P_H_RULE</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">h</span><span class="p">):</span>
-            <span class="n">forward_flow_limit</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">df_hvdc_links</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">h</span><span class="p">,</span> <span class="s1">&#39;FORWARD_LIMIT_MW&#39;</span><span class="p">])</span>
-            <span class="n">reverse_flow_limit</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">df_hvdc_links</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">h</span><span class="p">,</span> <span class="s1">&#39;REVERSE_LIMIT_MW&#39;</span><span class="p">])</span>
-            <span class="k">return</span> <span class="p">(</span><span class="o">-</span> <span class="n">reverse_flow_limit</span> <span class="o">/</span> <span class="n">model</span><span class="o">.</span><span class="n">BASE_POWER</span><span class="p">,</span> <span class="n">forward_flow_limit</span> <span class="o">/</span> <span class="n">model</span><span class="o">.</span><span class="n">BASE_POWER</span><span class="p">)</span>
-        <span class="n">model</span><span class="o">.</span><span class="n">p_H</span> <span class="o">=</span> <span class="n">Var</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">OMEGA_H</span><span class="p">,</span> <span class="n">bounds</span><span class="o">=</span><span class="n">P_H_RULE</span><span class="p">)</span>
-
-        <span class="c1"># Node voltage angles</span>
-        <span class="n">model</span><span class="o">.</span><span class="n">theta</span> <span class="o">=</span> <span class="n">Var</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">OMEGA_N</span><span class="p">)</span>
-
-
-        <span class="c1"># Constraints</span>
-        <span class="c1"># -----------</span>
-        <span class="c1"># Power balance</span>
-        <span class="n">generator_node_map</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_generator_node_map</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">OMEGA_G</span><span class="p">)</span>
-        <span class="n">network_graph</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_network_graph</span><span class="p">()</span>
-        <span class="k">def</span> <span class="nf">POWER_BALANCE_RULE</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">n</span><span class="p">):</span>
-            <span class="k">return</span> <span class="p">(</span><span class="o">-</span> <span class="n">model</span><span class="o">.</span><span class="n">D</span><span class="p">[</span><span class="n">n</span><span class="p">]</span> 
-                    <span class="o">+</span> <span class="n">model</span><span class="o">.</span><span class="n">R</span><span class="p">[</span><span class="n">n</span><span class="p">]</span>
-                    <span class="o">+</span> <span class="nb">sum</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">p</span><span class="p">[</span><span class="n">g</span><span class="p">]</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">generator_node_map</span><span class="p">[</span><span class="n">n</span><span class="p">])</span> 
-                    <span class="o">-</span> <span class="nb">sum</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">B</span><span class="p">[</span><span class="n">n</span><span class="p">,</span> <span class="n">m</span><span class="p">]</span> <span class="o">*</span> <span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">theta</span><span class="p">[</span><span class="n">n</span><span class="p">]</span> <span class="o">-</span> <span class="n">model</span><span class="o">.</span><span class="n">theta</span><span class="p">[</span><span class="n">m</span><span class="p">])</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">network_graph</span><span class="p">[</span><span class="n">n</span><span class="p">])</span> 
-                    <span class="o">-</span> <span class="nb">sum</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">K</span><span class="p">[</span><span class="n">n</span><span class="p">,</span> <span class="n">h</span><span class="p">]</span> <span class="o">*</span> <span class="n">model</span><span class="o">.</span><span class="n">p_H</span><span class="p">[</span><span class="n">h</span><span class="p">]</span> <span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="n">model</span><span class="o">.</span><span class="n">OMEGA_H</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span>
-        <span class="n">model</span><span class="o">.</span><span class="n">POWER_BALANCE</span> <span class="o">=</span> <span class="n">Constraint</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">OMEGA_N</span><span class="p">,</span> <span class="n">rule</span><span class="o">=</span><span class="n">POWER_BALANCE_RULE</span><span class="p">)</span>
-        
-        <span class="c1"># Max power output</span>
-        <span class="k">def</span> <span class="nf">P_MAX_RULE</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">g</span><span class="p">):</span>
-            <span class="k">return</span> <span class="n">model</span><span class="o">.</span><span class="n">p</span><span class="p">[</span><span class="n">g</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">model</span><span class="o">.</span><span class="n">REGISTERED_CAPACITY</span><span class="p">[</span><span class="n">g</span><span class="p">]</span> <span class="o">*</span> <span class="n">model</span><span class="o">.</span><span class="n">GENERATION_SHOCK_INDICATOR</span><span class="p">[</span><span class="n">g</span><span class="p">]</span>
-        <span class="n">model</span><span class="o">.</span><span class="n">P_MAX</span> <span class="o">=</span> <span class="n">Constraint</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">OMEGA_G</span><span class="p">,</span> <span class="n">rule</span><span class="o">=</span><span class="n">P_MAX_RULE</span><span class="p">)</span>
-
-        <span class="c1"># Reference angle</span>
-        <span class="k">def</span> <span class="nf">REFERENCE_ANGLE_RULE</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">n</span><span class="p">):</span>
-            <span class="k">if</span> <span class="n">model</span><span class="o">.</span><span class="n">S</span><span class="p">[</span><span class="n">n</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
-                <span class="k">return</span> <span class="n">model</span><span class="o">.</span><span class="n">theta</span><span class="p">[</span><span class="n">n</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="k">return</span> <span class="n">Constraint</span><span class="o">.</span><span class="n">Skip</span>
-        <span class="n">model</span><span class="o">.</span><span class="n">REFERENCE_ANGLE</span> <span class="o">=</span> <span class="n">Constraint</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">OMEGA_N</span><span class="p">,</span> <span class="n">rule</span><span class="o">=</span><span class="n">REFERENCE_ANGLE_RULE</span><span class="p">)</span>
-
-        <span class="c1"># Voltage angle difference constraint</span>
-        <span class="k">def</span> <span class="nf">VOLTAGE_ANGLE_DIFFERENCE_RULE</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">m</span><span class="p">):</span>
-            <span class="k">return</span> <span class="n">model</span><span class="o">.</span><span class="n">theta</span><span class="p">[</span><span class="n">n</span><span class="p">]</span> <span class="o">-</span> <span class="n">model</span><span class="o">.</span><span class="n">theta</span><span class="p">[</span><span class="n">m</span><span class="p">]</span> <span class="o">-</span> <span class="n">model</span><span class="o">.</span><span class="n">THETA_DELTA</span> <span class="o">&lt;=</span> <span class="mi">0</span>
-        <span class="n">model</span><span class="o">.</span><span class="n">VOLTAGE_ANGLE_DIFFERENCE</span> <span class="o">=</span> <span class="n">Constraint</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">OMEGA_NM</span><span class="p">,</span> <span class="n">rule</span><span class="o">=</span><span class="n">VOLTAGE_ANGLE_DIFFERENCE_RULE</span><span class="p">)</span>
-
-        <span class="c1"># AC interconnector flow constraints</span>
-        <span class="k">def</span> <span class="nf">AC_FLOW_RULE</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">j</span><span class="p">):</span>
-            <span class="k">return</span> <span class="nb">sum</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">B</span><span class="p">[</span><span class="n">n</span><span class="p">,</span> <span class="n">m</span><span class="p">]</span> <span class="o">*</span> <span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">theta</span><span class="p">[</span><span class="n">n</span><span class="p">]</span> <span class="o">-</span> <span class="n">model</span><span class="o">.</span><span class="n">theta</span><span class="p">[</span><span class="n">m</span><span class="p">])</span> <span class="k">for</span> <span class="n">n</span><span class="p">,</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">ac_limits</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">j</span><span class="p">,</span> <span class="s1">&#39;branches&#39;</span><span class="p">])</span>
-        <span class="n">model</span><span class="o">.</span><span class="n">AC_FLOW</span> <span class="o">=</span> <span class="n">Expression</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">OMEGA_J</span><span class="p">,</span> <span class="n">rule</span><span class="o">=</span><span class="n">AC_FLOW_RULE</span><span class="p">)</span>
-
-        <span class="k">def</span> <span class="nf">AC_POWER_FLOW_LIMIT_RULE</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">j</span><span class="p">):</span>
-            <span class="k">return</span> <span class="n">model</span><span class="o">.</span><span class="n">AC_FLOW</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">-</span> <span class="n">model</span><span class="o">.</span><span class="n">F</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="mi">0</span>
-        <span class="n">model</span><span class="o">.</span><span class="n">AC_POWER_FLOW_LIMIT</span> <span class="o">=</span> <span class="n">Constraint</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">OMEGA_J</span><span class="p">,</span> <span class="n">rule</span><span class="o">=</span><span class="n">AC_POWER_FLOW_LIMIT_RULE</span><span class="p">)</span>
-
-        
-        <span class="c1"># Expressions</span>
-        <span class="c1"># -----------</span>
-        <span class="c1"># Effective emissions intensity (original emissions intensity x scaling factor)</span>
-        <span class="k">def</span> <span class="nf">E_HAT_RULE</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">g</span><span class="p">):</span>
-            <span class="k">return</span> <span class="n">model</span><span class="o">.</span><span class="n">E</span><span class="p">[</span><span class="n">g</span><span class="p">]</span> <span class="o">*</span> <span class="n">model</span><span class="o">.</span><span class="n">EMISSIONS_INTENSITY_SHOCK_FACTOR</span><span class="p">[</span><span class="n">g</span><span class="p">]</span>
-        <span class="n">model</span><span class="o">.</span><span class="n">E_HAT</span> <span class="o">=</span> <span class="n">Expression</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">OMEGA_G</span><span class="p">,</span> <span class="n">rule</span><span class="o">=</span><span class="n">E_HAT_RULE</span><span class="p">)</span>
-        
-
-        <span class="c1"># Objective</span>
-        <span class="c1"># ---------</span>
-        <span class="n">model</span><span class="o">.</span><span class="n">OBJECTIVE</span> <span class="o">=</span> <span class="n">Objective</span><span class="p">(</span><span class="n">expr</span><span class="o">=</span><span class="nb">sum</span><span class="p">((</span><span class="n">model</span><span class="o">.</span><span class="n">C</span><span class="p">[</span><span class="n">g</span><span class="p">]</span> <span class="o">+</span> <span class="p">((</span><span class="n">model</span><span class="o">.</span><span class="n">E_HAT</span><span class="p">[</span><span class="n">g</span><span class="p">]</span> <span class="o">-</span> <span class="n">model</span><span class="o">.</span><span class="n">PHI</span><span class="p">)</span> <span class="o">*</span> <span class="n">model</span><span class="o">.</span><span class="n">TAU</span><span class="p">))</span> <span class="o">*</span> <span class="n">model</span><span class="o">.</span><span class="n">p</span><span class="p">[</span><span class="n">g</span><span class="p">]</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">model</span><span class="o">.</span><span class="n">OMEGA_G</span><span class="p">))</span>
-
-        <span class="k">return</span> <span class="n">model</span>
-    
-    
-    <span class="k">def</span> <span class="nf">update_model_parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">week_index</span><span class="p">,</span> <span class="n">scenario_index</span><span class="p">,</span> <span class="n">baseline</span><span class="p">,</span> <span class="n">permit_price</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot; Update DCOPF model parameters</span>
-
-<span class="sd">        Parameters</span>
-<span class="sd">        ----------</span>
-<span class="sd">        model : pyomo object</span>
-<span class="sd">            DCOPF OPF model</span>
-
-<span class="sd">        df_scenarios : pandas DataFrame</span>
-<span class="sd">            Demand and fixed power injection data for each week and each scenario</span>
-
-<span class="sd">        week_index : int</span>
-<span class="sd">            Index of week for which model should be run</span>
-
-<span class="sd">        scenario_index : int</span>
-<span class="sd">            Index of scenario that describes operating condition for the given week</span>
-
-<span class="sd">        baseline: float</span>
-<span class="sd">            Emissions intensity baseline [tCO2/MWh]</span>
-
-<span class="sd">        permit price : float</span>
-<span class="sd">            Permit price [$/tCO2]</span>
-
-<span class="sd">        Returns</span>
-<span class="sd">        -------</span>
-<span class="sd">        model : pyomo object</span>
-<span class="sd">            DCOPF model object with updated parameters.    </span>
-<span class="sd">        &quot;&quot;&quot;</span>
-
-        <span class="c1"># Update fixed nodal power injections</span>
-        <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">OMEGA_N</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">D</span><span class="p">[</span><span class="n">n</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">df_scenarios</span><span class="o">.</span><span class="n">loc</span><span class="p">[(</span><span class="s1">&#39;demand&#39;</span><span class="p">,</span> <span class="n">n</span><span class="p">),</span> <span class="p">(</span><span class="n">week_index</span><span class="p">,</span> <span class="n">scenario_index</span><span class="p">)]</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">BASE_POWER</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">R</span><span class="p">[</span><span class="n">n</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">df_scenarios</span><span class="o">.</span><span class="n">loc</span><span class="p">[(</span><span class="s1">&#39;hydro&#39;</span><span class="p">,</span> <span class="n">n</span><span class="p">),</span> <span class="p">(</span><span class="n">week_index</span><span class="p">,</span> <span class="n">scenario_index</span><span class="p">)]</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">df_scenarios</span><span class="o">.</span><span class="n">loc</span><span class="p">[(</span><span class="s1">&#39;intermittent&#39;</span><span class="p">,</span> <span class="n">n</span><span class="p">),</span> <span class="p">(</span><span class="n">week_index</span><span class="p">,</span> <span class="n">scenario_index</span><span class="p">)])</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">BASE_POWER</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
-            
-        <span class="c1"># Update emissions intensity baseline</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">PHI</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">baseline</span><span class="p">)</span>
-
-        <span class="c1"># Update permit price</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">TAU</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">permit_price</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">BASE_POWER</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
-        
-        <span class="c1"># Update week index</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">week_index</span> <span class="o">=</span> <span class="n">week_index</span>
-        
-        <span class="c1"># Update scenario index</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">scenario_index</span> <span class="o">=</span> <span class="n">scenario_index</span>
-               
-            
-    <span class="k">def</span> <span class="nf">solve_model</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="s2">&quot;Solve model&quot;</span>
-        
-        <span class="bp">self</span><span class="o">.</span><span class="n">opt</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">)</span>
-</pre></div>
-
-</div>
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[2]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="k">def</span> <span class="nf">get_aggregate_weekly_statistics</span><span class="p">(</span><span class="n">dcopf_object</span><span class="p">,</span> <span class="n">scenario_power_output</span><span class="p">,</span> <span class="n">week_index</span><span class="p">,</span> <span class="n">baseline</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Compute summarised weekly statistics</span>
-<span class="sd">    </span>
-<span class="sd">    Parameters</span>
-<span class="sd">    ----------</span>
-<span class="sd">    dcopf_object : class</span>
-<span class="sd">        Contains DCOPF scenario results and underlying data</span>
-<span class="sd">        </span>
-<span class="sd">    scenario_power_output : dict</span>
-<span class="sd">        power output for each generator for each week and each scenario</span>
-<span class="sd">        </span>
-<span class="sd">    week_index : int</span>
-<span class="sd">        Week for which aggregate statistics are to be calculated</span>
-<span class="sd">        </span>
-<span class="sd">    baseline : int</span>
-<span class="sd">        Emissions intensity baseline that applied for the given week</span>
-<span class="sd">        </span>
-<span class="sd">        </span>
-<span class="sd">    Returns</span>
-<span class="sd">    -------</span>
-<span class="sd">    output : dict</span>
-<span class="sd">        Dictionary summarising average emissions intensity of regulated generators, total emissions,</span>
-<span class="sd">        energy output from regulated generators, and net scheme revenue for given week</span>
-<span class="sd">        (dict keys: &#39;average_regulated_emissions_intensity&#39;, &#39;emissions_tCO2&#39;, &#39;energy_MWh&#39;, &#39;net_revenue&#39;)</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    
-    <span class="c1"># Power output for a given week</span>
-    <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">scenario_power_output</span><span class="p">)</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="p">(</span><span class="n">week_index</span><span class="p">,</span> <span class="nb">slice</span><span class="p">(</span><span class="kc">None</span><span class="p">))]</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span><span class="o">.</span><span class="n">melt</span><span class="p">(</span><span class="n">id_vars</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;index&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;variable_0&#39;</span><span class="p">:</span> <span class="s1">&#39;week&#39;</span><span class="p">,</span> <span class="s1">&#39;variable_1&#39;</span><span class="p">:</span> <span class="s1">&#39;scenario&#39;</span><span class="p">,</span> <span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="s1">&#39;power_pu&#39;</span><span class="p">})</span><span class="o">.</span><span class="n">astype</span><span class="p">({</span><span class="s1">&#39;week&#39;</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="s1">&#39;scenario&#39;</span><span class="p">:</span> <span class="nb">int</span><span class="p">})</span>
-
-    <span class="c1"># Scenario durations for a given week</span>
-    <span class="n">duration</span> <span class="o">=</span> <span class="n">dcopf_object</span><span class="o">.</span><span class="n">df_scenarios</span><span class="o">.</span><span class="n">loc</span><span class="p">[(</span><span class="s1">&#39;hours&#39;</span><span class="p">,</span> <span class="s1">&#39;duration&#39;</span><span class="p">),</span> <span class="p">(</span><span class="n">week_index</span><span class="p">,</span> <span class="nb">slice</span><span class="p">(</span><span class="kc">None</span><span class="p">))]</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
-    <span class="n">duration</span><span class="o">.</span><span class="n">columns</span> <span class="o">=</span> <span class="n">duration</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">droplevel</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
-
-    <span class="c1"># Merge scenario durations</span>
-    <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">duration</span><span class="p">,</span> <span class="n">how</span><span class="o">=</span><span class="s1">&#39;left&#39;</span><span class="p">,</span> <span class="n">left_on</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;week&#39;</span><span class="p">,</span> <span class="s1">&#39;scenario&#39;</span><span class="p">],</span> <span class="n">right_on</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;week&#39;</span><span class="p">,</span> <span class="s1">&#39;scenario&#39;</span><span class="p">])</span>
-
-    <span class="c1"># Merge emissions intensity for each DUID</span>
-    <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">dcopf_object</span><span class="o">.</span><span class="n">df_g</span><span class="p">[[</span><span class="s1">&#39;EMISSIONS&#39;</span><span class="p">]],</span> <span class="n">how</span><span class="o">=</span><span class="s1">&#39;left&#39;</span><span class="p">,</span> <span class="n">left_on</span><span class="o">=</span><span class="s1">&#39;index&#39;</span><span class="p">,</span> <span class="n">right_index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-
-    <span class="c1"># Compute total energy output from each generator for each scenario [MWh]</span>
-    <span class="n">df</span><span class="p">[</span><span class="s1">&#39;energy_MWh&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;power_pu&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">mul</span><span class="p">(</span><span class="mi">100</span><span class="p">)</span><span class="o">.</span><span class="n">mul</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;hours&#39;</span><span class="p">])</span>
-
-    <span class="c1"># Compute total emissions for each scenario [tCO2]</span>
-    <span class="n">df</span><span class="p">[</span><span class="s1">&#39;emissions_tCO2&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;energy_MWh&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">mul</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;EMISSIONS&#39;</span><span class="p">])</span>
-
-    <span class="c1"># Compute net scheme revenue for each generator for each scenario [$]</span>
-    <span class="n">df</span><span class="p">[</span><span class="s1">&#39;net_revenue&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;EMISSIONS&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">subtract</span><span class="p">(</span><span class="n">baseline</span><span class="p">)</span><span class="o">.</span><span class="n">mul</span><span class="p">(</span><span class="n">permit_price</span><span class="p">)</span><span class="o">.</span><span class="n">mul</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;energy_MWh&#39;</span><span class="p">])</span>
-
-    <span class="c1"># Compute total emissions and total energy output</span>
-    <span class="n">output</span> <span class="o">=</span> <span class="n">df</span><span class="p">[[</span><span class="s1">&#39;emissions_tCO2&#39;</span><span class="p">,</span> <span class="s1">&#39;energy_MWh&#39;</span><span class="p">,</span> <span class="s1">&#39;net_revenue&#39;</span><span class="p">]]</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="o">.</span><span class="n">to_dict</span><span class="p">()</span>
-
-    <span class="c1"># Average emissions intensity of generators under emissions policy for given week</span>
-    <span class="n">output</span><span class="p">[</span><span class="s1">&#39;average_regulated_emissions_intensity&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">output</span><span class="p">[</span><span class="s1">&#39;emissions_tCO2&#39;</span><span class="p">]</span> <span class="o">/</span> <span class="n">output</span><span class="p">[</span><span class="s1">&#39;energy_MWh&#39;</span><span class="p">]</span>
-
-    <span class="k">return</span> <span class="n">output</span>
-</pre></div>
-
-</div>
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[3]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="kn">import</span> <span class="nn">time</span>
-<span class="kn">import</span> <span class="nn">hashlib</span>
-
-<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
-<span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
-
-
-
-<span class="c1"># Paths</span>
-<span class="c1"># -----</span>
-<span class="c1"># Directory containing network and generator data</span>
-<span class="n">data_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">curdir</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">pardir</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">pardir</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">pardir</span><span class="p">,</span> <span class="s1">&#39;data&#39;</span><span class="p">)</span>
-
-<span class="c1"># Path to scenarios directory</span>
-<span class="n">scenarios_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">curdir</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">pardir</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">pardir</span><span class="p">,</span> <span class="s1">&#39;1_create_scenarios&#39;</span><span class="p">,</span> <span class="s1">&#39;output&#39;</span><span class="p">)</span>
-
-
-<span class="c1"># def update_model(data_dir, scenarios_dir, update_mode, shock_option, permit_price, baseline, week_of_shock, rolling_scheme_revenue, target_scheme_revenue, update_gain)</span>
-<span class="sd">&quot;&quot;&quot;Run model with given parameters</span>
-
-<span class="sd">Parameters</span>
-<span class="sd">----------</span>
-<span class="sd">data_dir : str</span>
-<span class="sd">    Path to directory containing core data files used in model initialisation</span>
-<span class="sd">    </span>
-<span class="sd">scenarios_dir : str</span>
-<span class="sd">    Path to directory containing representative operating scenarios</span>
-
-<span class="sd">update_mode : str</span>
-<span class="sd">    Specifies how baseline should be updated each week. </span>
-<span class="sd">    </span>
-<span class="sd">    Options:</span>
-<span class="sd">        NO_UPDATE         - Same baseline in next iteration</span>
-<span class="sd">        HISTORIC_UPDATE   - Recalibrate baseline assuming next week will be the same as the week just past</span>
-<span class="sd">        HOOKE_UPDATE      - Adjustment is proportional to difference between rolling scheme revenue </span>
-<span class="sd">                            and revenue target</span>
-<span class="sd">    </span>
-<span class="sd">shock_option : str</span>
-<span class="sd">    Specifies type of shock to which system will be subjected. Options</span>
-<span class="sd">    </span>
-<span class="sd">    Options:</span>
-<span class="sd">        NO_SHOCKS                 - No shocks to system</span>
-<span class="sd">        GENERATION_SHOCK          - 5% chance that each generator will be unavailable each week </span>
-<span class="sd">                                    beginning from &#39;week_of_shock&#39;</span>
-<span class="sd">        EMISSIONS_INTENSITY_SHOCK - Emissions intensity scaled by a random number between 0.8 </span>
-<span class="sd">                                    and 1 at &#39;week_of_shock&#39;</span>
-<span class="sd">        </span>
-<span class="sd">initial_permit_price : float</span>
-<span class="sd">    Initialised permit price value [$/tCO2]</span>
-
-<span class="sd">initial_baseline : float</span>
-<span class="sd">    Initialised emissions intensity baseline value [tCO2/MWh]</span>
-
-<span class="sd">week_of_shock : int</span>
-<span class="sd">    Index for week at which either generation or emissions intensities shocks will be implemented / begin.</span>
-
-<span class="sd">initial_rolling_scheme_revenue : float</span>
-<span class="sd">    Initialised rolling scheme revenue value [$]</span>
-<span class="sd">    </span>
-<span class="sd">target_scheme_revenue : float</span>
-<span class="sd">    Net scheme revenue target [$]</span>
-
-<span class="sd">update_gain : float</span>
-<span class="sd">    Gain used to modify magnitude of restoring force when there is a difference rolling </span>
-<span class="sd">    scheme revenue and the scheme revenue target</span>
-<span class="sd">&quot;&quot;&quot;</span>
-
-<span class="c1"># Model Parameters</span>
-<span class="c1"># ----------------</span>
-<span class="k">for</span> <span class="n">update_mode</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;NO_UPDATE&#39;</span><span class="p">,</span> <span class="s1">&#39;HISTORIC_UPDATE&#39;</span><span class="p">,</span> <span class="s1">&#39;HOOKE_UPDATE&#39;</span><span class="p">]:</span>
-    <span class="k">for</span> <span class="n">shock_option</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;NO_SHOCKS&#39;</span><span class="p">,</span> <span class="s1">&#39;GENERATION_SHOCK&#39;</span><span class="p">,</span> <span class="s1">&#39;EMISSIONS_INTENSITY_SHOCK&#39;</span><span class="p">]:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;Running model </span><span class="si">{update_mode}</span><span class="s1"> with run option </span><span class="si">{shock_option}</span><span class="s1">&#39;</span><span class="p">)</span>
-        
-        <span class="c1"># Type of scenario to be investigated</span>
-        <span class="n">update_mode</span> <span class="o">=</span> <span class="n">update_mode</span>
-
-        <span class="c1"># Option for given scenario</span>
-        <span class="n">shock_option</span> <span class="o">=</span> <span class="n">shock_option</span>
-
-        <span class="c1"># Permit price [$/tCO2]</span>
-        <span class="n">permit_price</span> <span class="o">=</span> <span class="mi">40</span>
-
-        <span class="c1"># Initial value for emissions intensity baseline [tCO2/MWh]</span>
-        <span class="n">baseline</span> <span class="o">=</span> <span class="mi">1</span>
-
-        <span class="c1"># Index of week for which the shock (generation / emissions intensity) is applied</span>
-        <span class="n">week_of_shock</span> <span class="o">=</span> <span class="mi">2</span>
-
-        <span class="c1"># Rolling scheme revenue [$]. Initiliase to 0.</span>
-        <span class="n">rolling_scheme_revenue</span> <span class="o">=</span> <span class="mi">0</span>
-
-        <span class="c1"># Revenue target</span>
-        <span class="n">target_scheme_revenue</span> <span class="o">=</span> <span class="mi">0</span>
-
-        <span class="c1"># Gain applied to emissions intensity update</span>
-        <span class="n">update_gain</span> <span class="o">=</span> <span class="mi">1</span>
-
-
-        <span class="c1"># Summary of all parameters defining the model</span>
-        <span class="n">parameter_values</span> <span class="o">=</span> <span class="p">(</span><span class="n">update_mode</span><span class="p">,</span> <span class="n">shock_option</span><span class="p">,</span> <span class="n">permit_price</span><span class="p">,</span> <span class="n">baseline</span><span class="p">,</span> <span class="n">week_of_shock</span><span class="p">,</span> <span class="n">rolling_scheme_revenue</span><span class="p">,</span> <span class="n">update_gain</span><span class="p">)</span>
-
-        <span class="c1"># Convert parameters to string</span>
-        <span class="n">parameter_values_string</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="nb">str</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">parameter_values</span><span class="p">])</span>
-
-        <span class="c1"># Find sha256 of parameter values - used as a unique identifier for the model run</span>
-        <span class="n">run_id</span> <span class="o">=</span> <span class="n">hashlib</span><span class="o">.</span><span class="n">sha256</span><span class="p">(</span><span class="n">parameter_values_string</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s1">&#39;utf-8&#39;</span><span class="p">))</span><span class="o">.</span><span class="n">hexdigest</span><span class="p">()[:</span><span class="mi">8</span><span class="p">]</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span>
-
-        <span class="c1"># Summary of model options, identified by the hash value of these options</span>
-        <span class="n">run_summary</span> <span class="o">=</span> <span class="p">{</span><span class="n">run_id</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;update_mode&#39;</span><span class="p">:</span> <span class="n">update_mode</span><span class="p">,</span> <span class="s1">&#39;shock_option&#39;</span><span class="p">:</span> <span class="n">shock_option</span><span class="p">,</span> <span class="s1">&#39;permit_price&#39;</span><span class="p">:</span> <span class="n">permit_price</span><span class="p">,</span> 
-                                <span class="s1">&#39;baseline&#39;</span><span class="p">:</span> <span class="n">baseline</span><span class="p">,</span> <span class="s1">&#39;week_of_shock&#39;</span><span class="p">:</span> <span class="n">week_of_shock</span><span class="p">,</span> 
-                                <span class="s1">&#39;rolling_scheme_revenue&#39;</span><span class="p">:</span> <span class="n">rolling_scheme_revenue</span><span class="p">,</span>
-                                <span class="s1">&#39;target_scheme_revenue&#39;</span><span class="p">:</span> <span class="n">target_scheme_revenue</span><span class="p">,</span> <span class="s1">&#39;update_gain&#39;</span><span class="p">:</span> <span class="n">update_gain</span><span class="p">}}</span>
-
-
-        <span class="c1"># Check if model parameters valid</span>
-        <span class="c1"># -------------------------------</span>
-        <span class="k">if</span> <span class="n">update_mode</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;NO_UPDATE&#39;</span><span class="p">,</span> <span class="s1">&#39;HISTORIC_UPDATE&#39;</span><span class="p">,</span> <span class="s1">&#39;HOOKE_UPDATE&#39;</span><span class="p">]:</span>
-            <span class="k">raise</span> <span class="ne">Warning</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;Unexpected update_mode encountered: </span><span class="si">{update_mode}</span><span class="s1">&#39;</span><span class="p">)</span>
-
-        <span class="k">if</span> <span class="n">shock_option</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;NO_SHOCKS&#39;</span><span class="p">,</span> <span class="s1">&#39;GENERATION_SHOCK&#39;</span><span class="p">,</span> <span class="s1">&#39;EMISSIONS_INTENSITY_SHOCK&#39;</span><span class="p">]:</span>
-            <span class="k">raise</span> <span class="ne">Warning</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;Unexpected shock_option encountered: </span><span class="si">{shock_option}</span><span class="s1">&#39;</span><span class="p">)</span>
-
-
-        <span class="c1"># Create model object</span>
-        <span class="c1"># -------------------</span>
-        <span class="c1"># Instantiate DCOPF model object</span>
-        <span class="n">DCOPF</span> <span class="o">=</span> <span class="n">DCOPFModel</span><span class="p">(</span><span class="n">data_dir</span><span class="o">=</span><span class="n">data_dir</span><span class="p">,</span> <span class="n">scenarios_dir</span><span class="o">=</span><span class="n">scenarios_dir</span><span class="p">)</span>
-
-
-        <span class="c1"># Result containers</span>
-        <span class="c1"># -----------------</span>
-        <span class="c1"># Power output for each generator for each scenario</span>
-        <span class="n">scenario_power_output</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
-
-        <span class="c1"># Prices at each node for each scenario</span>
-        <span class="n">scenario_nodal_prices</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
-
-        <span class="c1"># Emissions intensity baseline</span>
-        <span class="n">week_baseline</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
-
-        <span class="c1"># Rolling scheme revenue</span>
-        <span class="n">week_rolling_scheme_revenue</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
-        
-        
-        <span class="c1"># Random shocks (set seed so these will be the same for each scenario)</span>
-        <span class="c1"># --------------------------------------------------------------------</span>
-        <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
-        <span class="c1"># Specify if generator is on / off for a given week (1=generator is available, 0=generator unavailable)</span>
-        <span class="n">df_generation_shock_indicator</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="n">DCOPF</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">OMEGA_G</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="n">DCOPF</span><span class="o">.</span><span class="n">df_scenarios</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">levels</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">data</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
-
-        <span class="c1"># Pick a uniformly distributed random number between 0 and 1. If &gt; 0.95 (i.e. a 5% chance)</span>
-        <span class="c1"># turn generator off for the given week. Only apply generation shocks to weeks after and </span>
-        <span class="c1"># including week_of_shock.</span>
-        <span class="n">df_generation_shock_indicator</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="n">week_of_shock</span><span class="p">:]</span> <span class="o">=</span> <span class="n">df_generation_shock_indicator</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="n">week_of_shock</span><span class="p">:]</span><span class="o">.</span><span class="n">applymap</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="mi">0</span> <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mf">0.95</span> <span class="k">else</span> <span class="mi">1</span><span class="p">)</span>
-        
-        <span class="c1"># Augment original emissions intensity by random scaling factor between 0.8 and 1</span>
-        <span class="n">df_emissions_intensity_shock_factor</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="n">DCOPF</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">OMEGA_G</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mf">0.8</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">DCOPF</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">OMEGA_G</span><span class="p">)))</span>
-
-        
-        <span class="c1"># Run scenarios</span>
-        <span class="c1"># -------------</span>
-        <span class="c1"># For each week</span>
-        <span class="k">for</span> <span class="n">week_index</span> <span class="ow">in</span> <span class="n">DCOPF</span><span class="o">.</span><span class="n">df_scenarios</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">levels</span><span class="p">[</span><span class="mi">0</span><span class="p">][:</span><span class="mi">5</span><span class="p">]:</span>
-            <span class="c1"># Start clock to see how long it takes to solve all scenarios for each week</span>
-            <span class="n">t0</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
-
-            <span class="c1"># Record baseline applying for the given week</span>
-            <span class="n">week_baseline</span><span class="p">[</span><span class="n">week_index</span><span class="p">]</span> <span class="o">=</span> <span class="n">baseline</span>
-
-            <span class="c1"># Apply generation shock if run mode specified, and week index is greater than week_of_shock.</span>
-            <span class="c1"># Note: Different shock occurs each week after week_of_shock.</span>
-            <span class="k">if</span> <span class="n">shock_option</span> <span class="o">==</span> <span class="s1">&#39;GENERATION_SHOCK&#39;</span><span class="p">:</span>
-                <span class="c1"># Loop through all generators</span>
-                <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">DCOPF</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">OMEGA_G</span><span class="p">:</span>
-                    <span class="c1"># Initialise all generators to have a state of normal operation for each week</span>
-                    <span class="n">DCOPF</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">GENERATION_SHOCK_INDICATOR</span><span class="p">[</span><span class="n">g</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">df_generation_shock_indicator</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">g</span><span class="p">,</span> <span class="n">week_index</span><span class="p">])</span>
-            
-            
-            <span class="c1"># Apply emissions intensity shock if run mode specified. Shock occurs once at week index </span>
-            <span class="c1"># given by week_of_shock</span>
-            <span class="k">elif</span> <span class="p">(</span><span class="n">shock_option</span> <span class="o">==</span> <span class="s1">&#39;EMISSIONS_INTENSITY_SHOCK&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">week_index</span> <span class="o">==</span> <span class="n">week_of_shock</span><span class="p">):</span>
-                <span class="c1"># Loop through generators</span>
-                <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">DCOPF</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">OMEGA_G</span><span class="p">:</span>
-                    <span class="c1"># Augement generator emissions intensity factor</span>
-                    <span class="n">DCOPF</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">EMISSIONS_INTENSITY_SHOCK_FACTOR</span><span class="p">[</span><span class="n">g</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">df_emissions_intensity_shock_factor</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">g</span><span class="p">])</span>
-                    
-                    
-            <span class="c1"># For each representative scenario approximating a week&#39;s operating state</span>
-            <span class="k">for</span> <span class="n">scenario_index</span> <span class="ow">in</span> <span class="n">DCOPF</span><span class="o">.</span><span class="n">df_scenarios</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">levels</span><span class="p">[</span><span class="mi">1</span><span class="p">]:</span>        
-                <span class="c1"># Update model parameters</span>
-                <span class="n">DCOPF</span><span class="o">.</span><span class="n">update_model_parameters</span><span class="p">(</span><span class="n">week_index</span><span class="o">=</span><span class="n">week_index</span><span class="p">,</span> <span class="n">scenario_index</span><span class="o">=</span><span class="n">scenario_index</span><span class="p">,</span> <span class="n">baseline</span><span class="o">=</span><span class="n">baseline</span><span class="p">,</span> <span class="n">permit_price</span><span class="o">=</span><span class="n">permit_price</span><span class="p">)</span>
-
-                <span class="c1"># Solve model</span>
-                <span class="n">DCOPF</span><span class="o">.</span><span class="n">solve_model</span><span class="p">()</span>
-
-                
-                <span class="c1"># Store results</span>
-                <span class="c1"># -------------</span>
-                <span class="c1"># Power output from each generator</span>
-                <span class="n">scenario_power_output</span><span class="p">[(</span><span class="n">week_index</span><span class="p">,</span> <span class="n">scenario_index</span><span class="p">)]</span> <span class="o">=</span> <span class="n">DCOPF</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">get_values</span><span class="p">()</span>
-
-                <span class="c1"># Nodal prices</span>
-                <span class="n">scenario_nodal_prices</span><span class="p">[(</span><span class="n">week_index</span><span class="p">,</span> <span class="n">scenario_index</span><span class="p">)]</span> <span class="o">=</span> <span class="p">{</span><span class="n">n</span><span class="p">:</span> <span class="n">DCOPF</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">dual</span><span class="p">[</span><span class="n">DCOPF</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">POWER_BALANCE</span><span class="p">[</span><span class="n">n</span><span class="p">]]</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">DCOPF</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">OMEGA_N</span><span class="p">}</span>
-
-                
-            <span class="c1"># Compute aggregate statistics for week just past</span>
-            <span class="n">aggregate_weekly_statistics</span> <span class="o">=</span> <span class="n">get_aggregate_weekly_statistics</span><span class="p">(</span><span class="n">DCOPF</span><span class="p">,</span> <span class="n">scenario_power_output</span><span class="p">,</span> <span class="n">week_index</span><span class="p">,</span> <span class="n">baseline</span><span class="p">)</span>
-
-            <span class="c1"># Update rolling scheme revenue</span>
-            <span class="n">rolling_scheme_revenue</span> <span class="o">+=</span> <span class="n">aggregate_weekly_statistics</span><span class="p">[</span><span class="s1">&#39;net_revenue&#39;</span><span class="p">]</span>
-
-            <span class="c1"># Record rolling scheme revenue</span>
-            <span class="n">week_rolling_scheme_revenue</span><span class="p">[</span><span class="n">week_index</span><span class="p">]</span> <span class="o">=</span> <span class="n">rolling_scheme_revenue</span>
-
-
-            <span class="c1"># Update baseline</span>
-            <span class="c1"># ---------------</span>
-            <span class="k">if</span> <span class="n">update_mode</span> <span class="o">==</span> <span class="s1">&#39;BAU&#39;</span><span class="p">:</span>
-                <span class="c1"># No update to baseline (should be 0 tCO2/MWh)</span>
-                <span class="n">baseline</span> <span class="o">=</span> <span class="n">baseline</span>
-
-            <span class="k">elif</span> <span class="n">update_mode</span> <span class="o">==</span> <span class="s1">&#39;HISTORIC_UPDATE&#39;</span><span class="p">:</span>
-                <span class="c1"># Update baseline based on historic average emissions intensity and total energy output</span>
-                <span class="c1"># (assumes next week will be similar to the week just gone)</span>
-                <span class="n">baseline</span> <span class="o">+=</span> <span class="n">aggregate_weekly_statistics</span><span class="p">[</span><span class="s1">&#39;average_regulated_emissions_intensity&#39;</span><span class="p">]</span> <span class="o">-</span> <span class="n">update_gain</span> <span class="o">*</span> <span class="p">((</span><span class="n">target_scheme_revenue</span> <span class="o">-</span> <span class="n">rolling_scheme_revenue</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">permit_price</span> <span class="o">*</span> <span class="n">aggregate_weekly_statistics</span><span class="p">[</span><span class="s1">&#39;energy_MWh&#39;</span><span class="p">]))</span>
-
-            <span class="k">elif</span> <span class="n">update_mode</span> <span class="o">==</span> <span class="s1">&#39;BASELINE_ADJUSTMENT&#39;</span><span class="p">:</span>
-                <span class="c1"># Increment last week&#39;s baseline by an amount proportional to the different </span>
-                <span class="c1"># between rolling scheme revenue and the target, scaled by energy output in the week just past.</span>
-                <span class="n">baseline</span> <span class="o">+=</span> <span class="n">baseline</span> <span class="o">-</span> <span class="n">update_gain</span> <span class="o">*</span> <span class="p">((</span><span class="n">target_scheme_revenue</span> <span class="o">-</span> <span class="n">rolling_scheme_revenue</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">permit_price</span> <span class="o">*</span> <span class="n">aggregate_weekly_statistics</span><span class="p">[</span><span class="s1">&#39;energy_MWh&#39;</span><span class="p">]))</span>
-
-            <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;Completed week </span><span class="si">{week_index}</span><span class="s1"> in {time.time()-t0:.2f}s&#39;</span><span class="p">)</span>
-
-
-        <span class="c1"># Save results</span>
-        <span class="c1"># ------------</span>
-        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;output/</span><span class="si">{run_id}</span><span class="s1">_scenario_nodal_prices.pickle&#39;</span><span class="p">,</span> <span class="s1">&#39;wb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
-            <span class="n">pickle</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">scenario_nodal_prices</span><span class="p">,</span> <span class="n">f</span><span class="p">)</span>
-
-        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;output/</span><span class="si">{run_id}</span><span class="s1">_scenario_power_output.pickle&#39;</span><span class="p">,</span> <span class="s1">&#39;wb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
-            <span class="n">pickle</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">scenario_power_output</span><span class="p">,</span> <span class="n">f</span><span class="p">)</span>
-
-        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;output/</span><span class="si">{run_id}</span><span class="s1">_week_baseline.pickle&#39;</span><span class="p">,</span> <span class="s1">&#39;wb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
-            <span class="n">pickle</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">week_baseline</span><span class="p">,</span> <span class="n">f</span><span class="p">)</span>
-
-        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;output/</span><span class="si">{run_id}</span><span class="s1">_run_summary.pickle&#39;</span><span class="p">,</span> <span class="s1">&#39;wb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
-            <span class="n">pickle</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">run_summary</span><span class="p">,</span> <span class="n">f</span><span class="p">)</span>
-            
-        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;output/</span><span class="si">{run_id}</span><span class="s1">_generation_shock_indicator.pickle&#39;</span><span class="p">,</span> <span class="s1">&#39;wb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
-            <span class="n">pickle</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">df_generation_shock_indicator</span><span class="p">,</span> <span class="n">f</span><span class="p">)</span>
-
-        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;output/</span><span class="si">{run_id}</span><span class="s1">_emissions_intensity_shock_factor.pickle&#39;</span><span class="p">,</span> <span class="s1">&#39;wb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
-            <span class="n">pickle</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">df_emissions_intensity_shock_factor</span><span class="p">,</span> <span class="n">f</span><span class="p">)</span>
+<div class=" highlight hl-ipython3"><pre><span></span><span class="o">*</span> <span class="n">Total</span> <span class="n">emissions</span> <span class="k">for</span> <span class="n">each</span> <span class="n">NEM</span> <span class="n">region</span> <span class="ow">and</span> <span class="n">nation</span>
+<span class="o">*</span> <span class="n">Total</span> <span class="n">scheme</span> <span class="n">revenue</span> <span class="k">for</span> <span class="n">each</span> <span class="n">NEM</span> <span class="n">region</span> <span class="ow">and</span> <span class="n">nation</span>
+<span class="o">*</span> <span class="n">Generation</span> <span class="n">by</span> <span class="n">fuel</span> <span class="nb">type</span> <span class="ow">and</span> <span class="n">NEM</span> <span class="n">region</span> <span class="ow">and</span> <span class="n">nation</span>
+
+<span class="n">Then</span> <span class="n">aggregate</span> <span class="n">scenarios</span> <span class="n">into</span> <span class="n">weekly</span> <span class="n">values</span>
+<span class="o">*</span> <span class="n">Average</span> <span class="n">price</span> <span class="k">for</span> <span class="n">each</span> <span class="n">NEM</span> <span class="n">region</span>
+<span class="o">*</span> <span class="n">Emissions</span> <span class="n">intensity</span> <span class="k">for</span> <span class="n">system</span> <span class="ow">and</span> <span class="n">regulated</span> <span class="n">generators</span><span class="p">,</span> <span class="k">for</span> <span class="n">nation</span> <span class="ow">and</span> <span class="n">each</span> <span class="n">NEM</span> <span class="n">region</span>
+<span class="o">*</span> <span class="n">Generation</span> <span class="n">by</span> <span class="n">fuel</span> <span class="nb">type</span> <span class="ow">and</span> <span class="n">NEM</span> <span class="n">region</span> <span class="ow">and</span> <span class="n">nation</span>
 </pre></div>
 
 </div>
@@ -12587,140 +12206,14 @@ div#notebook {
 <div class="prompt"></div>
 
 
-<div class="output_subarea output_stream output_stdout output_text">
-<pre>Running model BAU with run option NO_SHOCKS
-Completed week 1 in 11.96s
-Completed week 2 in 12.11s
-Completed week 3 in 11.90s
-Completed week 4 in 11.89s
-Completed week 5 in 12.06s
-Running model BAU with run option GENERATION_SHOCK
-Completed week 1 in 11.86s
-Completed week 2 in 11.83s
-Completed week 3 in 12.22s
-Completed week 4 in 11.83s
-Completed week 5 in 11.83s
-Running model BAU with run option EMISSIONS_INTENSITY_SHOCK
-Completed week 1 in 13.69s
-Completed week 2 in 13.03s
-Completed week 3 in 14.61s
-Completed week 4 in 13.34s
-Completed week 5 in 13.43s
-Running model HISTORIC_UPDATE with run option NO_SHOCKS
-Completed week 1 in 13.56s
-Completed week 2 in 13.57s
-Completed week 3 in 14.27s
-Completed week 4 in 13.51s
-Completed week 5 in 14.77s
-Running model HISTORIC_UPDATE with run option GENERATION_SHOCK
-Completed week 1 in 15.52s
-Completed week 2 in 14.38s
-Completed week 3 in 13.01s
-Completed week 4 in 14.03s
-Completed week 5 in 13.66s
-Running model HISTORIC_UPDATE with run option EMISSIONS_INTENSITY_SHOCK
-Completed week 1 in 12.46s
-Completed week 2 in 12.49s
-Completed week 3 in 12.35s
-Completed week 4 in 13.12s
-Completed week 5 in 13.42s
-Running model BASELINE_ADJUSTMENT with run option NO_SHOCKS
-Completed week 1 in 12.67s
-Completed week 2 in 13.41s
-Completed week 3 in 12.85s
-Completed week 4 in 12.53s
-Completed week 5 in 13.01s
-Running model BASELINE_ADJUSTMENT with run option GENERATION_SHOCK
-Completed week 1 in 12.89s
-Completed week 2 in 12.39s
-Completed week 3 in 12.19s
-Completed week 4 in 12.47s
-Completed week 5 in 12.22s
-Running model BASELINE_ADJUSTMENT with run option EMISSIONS_INTENSITY_SHOCK
-Completed week 1 in 12.41s
-Completed week 2 in 12.42s
-Completed week 3 in 12.25s
-Completed week 4 in 12.15s
-Completed week 5 in 12.10s
+<div class="output_subarea output_text output_error">
+<pre>
+<span class="ansi-cyan-intense-fg ansi-bold">  File </span><span class="ansi-green-intense-fg ansi-bold">&#34;&lt;ipython-input-1-c7b27e796d56&gt;&#34;</span><span class="ansi-cyan-intense-fg ansi-bold">, line </span><span class="ansi-green-intense-fg ansi-bold">1</span>
+<span class="ansi-yellow-intense-fg ansi-bold">    * Total emissions for each NEM region and nation</span>
+<span class="ansi-white-intense-fg ansi-bold">                    ^</span>
+<span class="ansi-red-intense-fg ansi-bold">SyntaxError</span><span class="ansi-red-intense-fg ansi-bold">:</span> invalid syntax
 </pre>
 </div>
-</div>
-
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[4]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;output/</span><span class="si">{run_id}</span><span class="s1">_run_summary.pickle&#39;</span><span class="p">,</span> <span class="s1">&#39;rb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
-    <span class="n">runs</span> <span class="o">=</span> <span class="n">pickle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
-    
-<span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">runs</span><span class="p">,</span> <span class="n">orient</span><span class="o">=</span><span class="s1">&#39;index&#39;</span><span class="p">)</span>
-</pre></div>
-
-</div>
-</div>
-</div>
-
-<div class="output_wrapper">
-<div class="output">
-
-
-<div class="output_area">
-
-<div class="prompt output_prompt">Out[4]:</div>
-
-
-
-<div class="output_html rendered_html output_subarea output_execute_result">
-<div>
-<style scoped>
-    .dataframe tbody tr th:only-of-type {
-        vertical-align: middle;
-    }
-
-    .dataframe tbody tr th {
-        vertical-align: top;
-    }
-
-    .dataframe thead th {
-        text-align: right;
-    }
-</style>
-<table border="1" class="dataframe">
-  <thead>
-    <tr style="text-align: right;">
-      <th></th>
-      <th>run_mode</th>
-      <th>run_option</th>
-      <th>permit_price</th>
-      <th>baseline</th>
-      <th>week_of_shock</th>
-      <th>rolling_scheme_revenue</th>
-      <th>target_scheme_revenue</th>
-      <th>update_gain</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <th>F9E8FFA0</th>
-      <td>BASELINE_ADJUSTMENT</td>
-      <td>EMISSIONS_INTENSITY_SHOCK</td>
-      <td>40</td>
-      <td>1</td>
-      <td>2</td>
-      <td>0</td>
-      <td>0</td>
-      <td>1</td>
-    </tr>
-  </tbody>
-</table>
-</div>
-</div>
-
 </div>
 
 </div>
