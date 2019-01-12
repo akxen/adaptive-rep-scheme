@@ -9,7 +9,7 @@ import pickle
 from math import pi
 
 import numpy as np
-np.random.seed(10)
+
 
 import pandas as pd
 from pyomo.environ import *
@@ -18,7 +18,7 @@ from pyomo.environ import *
 class RawData:
     "Load raw data to be used in model"
     
-    def __init__(self, data_dir, scenarios_dir):
+    def __init__(self, data_dir, scenarios_dir, seed=10):
         
         # Paths to directories
         # --------------------
@@ -28,28 +28,30 @@ class RawData:
         # Network data
         # ------------
         # Nodes
-        self.df_n = pd.read_csv(os.path.join(self.data_dir, 'network_nodes.csv'), index_col='NODE_ID')
+        self.df_n = pd.read_csv(os.path.join(self.data_dir, 'egrimod-nem-dataset-v1.3', 'akxen-egrimod-nem-dataset-4806603', 'network', 'network_nodes.csv'), index_col='NODE_ID')
 
         # AC edges
-        self.df_e = pd.read_csv(os.path.join(self.data_dir, 'network_edges.csv'), index_col='LINE_ID')
+        self.df_e = pd.read_csv(os.path.join(self.data_dir, 'egrimod-nem-dataset-v1.3', 'akxen-egrimod-nem-dataset-4806603', 'network', 'network_edges.csv'), index_col='LINE_ID')
 
         # HVDC links
-        self.df_hvdc_links = pd.read_csv(os.path.join(self.data_dir, 'network_hvdc_links.csv'), index_col='HVDC_LINK_ID')
+        self.df_hvdc_links = pd.read_csv(os.path.join(self.data_dir, 'egrimod-nem-dataset-v1.3', 'akxen-egrimod-nem-dataset-4806603', 'network', 'network_hvdc_links.csv'), index_col='HVDC_LINK_ID')
 
         # AC interconnector links
-        self.df_ac_i_links = pd.read_csv(os.path.join(self.data_dir, 'network_ac_interconnector_links.csv'), index_col='INTERCONNECTOR_ID')
+        self.df_ac_i_links = pd.read_csv(os.path.join(self.data_dir, 'egrimod-nem-dataset-v1.3', 'akxen-egrimod-nem-dataset-4806603', 'network', 'network_ac_interconnector_links.csv'), index_col='INTERCONNECTOR_ID')
 
         # AC interconnector flow limits
-        self.df_ac_i_limits = pd.read_csv(os.path.join(self.data_dir, 'network_ac_interconnector_flow_limits.csv'), index_col='INTERCONNECTOR_ID')
+        self.df_ac_i_limits = pd.read_csv(os.path.join(self.data_dir, 'egrimod-nem-dataset-v1.3', 'akxen-egrimod-nem-dataset-4806603', 'network', 'network_ac_interconnector_flow_limits.csv'), index_col='INTERCONNECTOR_ID')
 
 
         # Generators
         # ----------       
         # Generating unit information
-        self.df_g = pd.read_csv(os.path.join(self.data_dir, 'generators.csv'), index_col='DUID', dtype={'NODE': int})
+        self.df_g = pd.read_csv(os.path.join(self.data_dir, 'egrimod-nem-dataset-v1.3', 'akxen-egrimod-nem-dataset-4806603', 'generators', 'generators.csv'), index_col='DUID', dtype={'NODE': int})
         
         # Perturb short-run marginal costs (SRMCs) so all unique 
-        # (add uniformly distributed random number between 0 and 2 to each SRMC)
+        # (add uniformly distributed random number between 0 and 2 to each SRMC. Set seed so this randomness
+        # can be reproduced)
+        np.random.seed(seed)
         self.df_g['SRMC_2016-17'] = self.df_g['SRMC_2016-17'] + np.random.uniform(0, 2, self.df_g.shape[0])
         
         
@@ -339,7 +341,7 @@ class DCOPFModel(OrganiseData):
 
         # Generation shock indicator parameter (=0 if generation shock specified, 
         # else equals 1 if normal operation). Initialize value to 1 (normal operation)
-        model.GENERATION_SHOCK_INDICATOR = Param(model.OMEGA_G, initialize=1, mutable=True)
+        model.GENERATION_SHOCK_FACTOR = Param(model.OMEGA_G, initialize=1, mutable=True)
         
         # Emissions intensity shock indicator parameter. Used to scale original emissions intensities.
         model.EMISSIONS_INTENSITY_SHOCK_FACTOR = Param(model.OMEGA_G, initialize=1, mutable=True)
@@ -376,7 +378,7 @@ class DCOPFModel(OrganiseData):
         
         # Max power output
         def P_MAX_RULE(model, g):
-            return model.p[g] <= model.REGISTERED_CAPACITY[g] * model.GENERATION_SHOCK_INDICATOR[g]
+            return model.p[g] <= model.REGISTERED_CAPACITY[g] * model.GENERATION_SHOCK_FACTOR[g]
         model.P_MAX = Constraint(model.OMEGA_G, rule=P_MAX_RULE)
 
         # Reference angle
@@ -473,7 +475,7 @@ class DCOPFModel(OrganiseData):
 # In[2]:
 
 
-def get_aggregate_weekly_statistics(dcopf_object, scenario_power_output, week_index, baseline):
+def get_aggregate_weekly_statistics(dcopf_object, scenario_power_output, week_index, baseline, permit_price):
     """Compute summarised weekly statistics
     
     Parameters
@@ -500,7 +502,7 @@ def get_aggregate_weekly_statistics(dcopf_object, scenario_power_output, week_in
     """
     
     # Power output for a given week
-    df = pd.DataFrame(scenario_power_output).loc[:, (week_index, slice(None))].reset_index().melt(id_vars=['index']).rename(columns={'variable_0': 'week', 'variable_1': 'scenario', 'value': 'power_pu'}).astype({'week': int, 'scenario': int})
+    df = pd.DataFrame(scenario_power_output).loc[:, (week_index, slice(None))].reset_index().melt(id_vars=['index']).rename(columns={'index': 'DUID', 'variable_0': 'week', 'variable_1': 'scenario', 'value': 'power_pu'}).astype({'week': int, 'scenario': int})
 
     # Scenario durations for a given week
     duration = dcopf_object.df_scenarios.loc[('hours', 'duration'), (week_index, slice(None))].reset_index()
@@ -510,8 +512,9 @@ def get_aggregate_weekly_statistics(dcopf_object, scenario_power_output, week_in
     df = pd.merge(df, duration, how='left', left_on=['week', 'scenario'], right_on=['week', 'scenario'])
 
     # Merge emissions intensity for each DUID
-    df = pd.merge(df, dcopf_object.df_g[['EMISSIONS']], how='left', left_on='index', right_index=True)
-
+#     df = pd.merge(df, dcopf_object.df_g[['EMISSIONS']], how='left', left_on='index', right_index=True)
+    df['EMISSIONS'] = df.apply(lambda x: dcopf_object.model.E_HAT[x['DUID']].expr(), axis=1)
+    
     # Compute total energy output from each generator for each scenario [MWh]
     df['energy_MWh'] = df['power_pu'].mul(100).mul(df['hours'])
 
@@ -537,8 +540,6 @@ import time
 import hashlib
 
 import numpy as np
-np.random.seed(10)
-
 
 
 # Paths
@@ -547,252 +548,307 @@ np.random.seed(10)
 data_dir = os.path.join(os.path.curdir, os.path.pardir, os.path.pardir, os.path.pardir, 'data')
 
 # Path to scenarios directory
-scenarios_dir = os.path.join(os.path.curdir, os.path.pardir, os.path.pardir, '1_create_scenarios', 'output')
+scenarios_dir = os.path.join(os.path.curdir, os.path.pardir, os.path.pardir, '1_create_scenarios', 'output')  
 
 
-# def update_model(data_dir, scenarios_dir, update_mode, shock_option, permit_price, baseline, week_of_shock, rolling_scheme_revenue, target_scheme_revenue, update_gain)
-"""Run model with given parameters
+def run_model(data_dir, scenarios_dir, shock_option, update_mode, update_gain=1, week_of_shock=10, target_scheme_revenue=0, initial_permit_price=40, initial_baseline=1, initial_rolling_scheme_revenue=0, seed=10):
+    """Run model with given parameters
 
-Parameters
-----------
-data_dir : str
-    Path to directory containing core data files used in model initialisation
+    Parameters
+    ----------
+    data_dir : str
+        Path to directory containing core data files used in model initialisation
+
+    scenarios_dir : str
+        Path to directory containing representative operating scenarios
+
+    shock_option : str
+        Specifies type of shock to which system will be subjected. Options
+
+        Options:
+            NO_SHOCKS                 - No shocks to system
+            GENERATION_SHOCK          - 5% chance that each generator will be unavailable each week 
+                                        beginning from 'week_of_shock'
+            EMISSIONS_INTENSITY_SHOCK - Emissions intensity scaled by a random number between 0.8 
+                                        and 1 at 'week_of_shock'
+    update_mode : str
+        Specifies how baseline should be updated each week. 
+
+        Options:
+            NO_UPDATE         - Same baseline in next iteration
+            HISTORIC_UPDATE   - Recalibrate baseline assuming next week will be the same as the week just past
+            HOOKE_UPDATE      - Adjustment is proportional to difference between rolling scheme revenue 
+                                and revenue target
+        
+    update_gain : float
+        Gain used to modify magnitude of restoring force when there is a difference rolling 
+        scheme revenue and the scheme revenue target. Default = 1.
+
+    week_of_shock : int
+        Index for week at which either generation or emissions intensities shocks will be implemented / begin.
+        Default = 10.
+
+    target_scheme_revenue : float
+        Net scheme revenue target [$]. Default = $0.
+        
+    initial_permit_price : float
+        Initialised permit price value [$/tCO2]. Default = 40 $/tCO2.
+
+    initial_baseline : float
+        Initialised emissions intensity baseline value [tCO2/MWh]. Default = 1 tCO2/MWh.
+
+    initial_rolling_scheme_revenue : float
+        Initialised rolling scheme revenue value [$]. Default = $0.
+
+   seed : int
+        Seed used for random number generator. Allows shocks to be reproduced. Default = 10.
+        
     
-scenarios_dir : str
-    Path to directory containing representative operating scenarios
+    Returns
+    -------
+    run_id : str
+        ID used to identify model run
+    """
 
-update_mode : str
-    Specifies how baseline should be updated each week. 
+    # Print model being run
+    print(f'Running model {update_mode} with run option {shock_option}')
+
+    # Summary of all parameters defining the model
+    parameter_values = (shock_option, update_mode, update_gain, week_of_shock, target_scheme_revenue, initial_permit_price, initial_baseline, initial_rolling_scheme_revenue, seed)
+
+    # Convert parameters to string
+    parameter_values_string = ''.join([str(i) for i in parameter_values])
+
+    # Find sha256 of parameter values - used as a unique identifier for the model run
+    run_id = hashlib.sha256(parameter_values_string.encode('utf-8')).hexdigest()[:8].upper()
+
+    # Summary of model options, identified by the hash value of these options
     
-    Options:
-        NO_UPDATE         - Same baseline in next iteration
-        HISTORIC_UPDATE   - Recalibrate baseline assuming next week will be the same as the week just past
-        HOOKE_UPDATE      - Adjustment is proportional to difference between rolling scheme revenue 
-                            and revenue target
-    
-shock_option : str
-    Specifies type of shock to which system will be subjected. Options
-    
-    Options:
-        NO_SHOCKS                 - No shocks to system
-        GENERATION_SHOCK          - 5% chance that each generator will be unavailable each week 
-                                    beginning from 'week_of_shock'
-        EMISSIONS_INTENSITY_SHOCK - Emissions intensity scaled by a random number between 0.8 
-                                    and 1 at 'week_of_shock'
+    run_summary = {run_id: {'shock_option': shock_option, 'update_mode': update_mode,
+                            'update_gain': update_gain, 'week_of_shock': week_of_shock, 
+                            'target_scheme_revenue': target_scheme_revenue,
+                            'initial_permit_price': initial_permit_price,
+                            'initial_baseline': initial_baseline, 
+                            'initial_rolling_scheme_revenue': initial_rolling_scheme_revenue, 
+                            'seed': seed}}
+
+
+    # Check if model parameters valid
+    # -------------------------------
+    if update_mode not in ['NO_UPDATE', 'HISTORIC_UPDATE', 'HOOKE_UPDATE']:
+        raise Warning(f'Unexpected update_mode encountered: {update_mode}')
+
+    if shock_option not in ['NO_SHOCKS', 'GENERATION_SHOCK', 'EMISSIONS_INTENSITY_SHOCK']:
+        raise Warning(f'Unexpected shock_option encountered: {shock_option}')
+
+
+    # Create model object
+    # -------------------
+    # Instantiate DCOPF model object
+    DCOPF = DCOPFModel(data_dir=data_dir, scenarios_dir=scenarios_dir)
+
+
+    # Result containers
+    # -----------------
+    # Power output for each generator for each scenario
+    scenario_power_output = dict()
+
+    # Prices at each node for each scenario
+    scenario_nodal_prices = dict()
+
+    # Emissions intensity baseline
+    week_baseline = dict()
+
+    # Rolling scheme revenue
+    week_rolling_scheme_revenue = dict()
+
+
+    # Random shocks 
+    # -------------
+    # Set seed so random shocks can be reproduced if needed
+    np.random.seed(seed)
+
+    # Specify if generator is on / off for a given week (1=generator is available, 0=generator unavailable)
+    df_generation_shock_factor = pd.DataFrame(index=DCOPF.model.OMEGA_G, columns=DCOPF.df_scenarios.columns.levels[0], data=1)
+
+    # Pick a uniformly distributed random number between 0 and 1. If > 0.95 (i.e. a 5% chance)
+    # turn generator off for the given week. Only apply generation shocks to weeks after and 
+    # including week_of_shock.
+    df_generation_shock_factor.loc[:, week_of_shock:] = df_generation_shock_factor.loc[:, week_of_shock:].applymap(lambda x: np.random.uniform(0, 1) if np.random.uniform(0, 1) > 0.95 else 1)
+
+    # Augment original emissions intensity by random scaling factor between 0.8 and 1
+    df_emissions_intensity_shock_factor = pd.Series(index=DCOPF.model.OMEGA_G, data=np.random.uniform(0.8, 1, len(DCOPF.model.OMEGA_G)))
+
+
+    # Run scenarios
+    # -------------
+    # For each week
+    for week_index in DCOPF.df_scenarios.columns.levels[0]:
+        # Start clock to see how long it takes to solve all scenarios for each week
+        t0 = time.time()
+
+        # Initialise policy parameter if the first week
+        if week_index == 1:
+            # Initialise emissions intensity baseline
+            baseline = initial_baseline
+            
+            # Initialise permit price
+            permit_price = initial_permit_price
+            
+            # Initialise rolling scheme revenue
+            rolling_scheme_revenue = initial_rolling_scheme_revenue
+            
         
-initial_permit_price : float
-    Initialised permit price value [$/tCO2]
+        # Record baseline applying for the given week
+        week_baseline[week_index] = baseline
 
-initial_baseline : float
-    Initialised emissions intensity baseline value [tCO2/MWh]
-
-week_of_shock : int
-    Index for week at which either generation or emissions intensities shocks will be implemented / begin.
-
-initial_rolling_scheme_revenue : float
-    Initialised rolling scheme revenue value [$]
-    
-target_scheme_revenue : float
-    Net scheme revenue target [$]
-
-update_gain : float
-    Gain used to modify magnitude of restoring force when there is a difference rolling 
-    scheme revenue and the scheme revenue target
-"""
-
-# Model Parameters
-# ----------------
-for update_mode in ['NO_UPDATE', 'HISTORIC_UPDATE', 'HOOKE_UPDATE']:
-    for shock_option in ['NO_SHOCKS', 'GENERATION_SHOCK', 'EMISSIONS_INTENSITY_SHOCK']:
-        print(f'Running model {update_mode} with run option {shock_option}')
-        
-        # Type of scenario to be investigated
-        update_mode = update_mode
-
-        # Option for given scenario
-        shock_option = shock_option
-
-        # Permit price [$/tCO2]
-        permit_price = 40
-
-        # Initial value for emissions intensity baseline [tCO2/MWh]
-        baseline = 1
-
-        # Index of week for which the shock (generation / emissions intensity) is applied
-        week_of_shock = 2
-
-        # Rolling scheme revenue [$]. Initiliase to 0.
-        rolling_scheme_revenue = 0
-
-        # Revenue target
-        target_scheme_revenue = 0
-
-        # Gain applied to emissions intensity update
-        update_gain = 1
+        # Apply generation shock if run mode specified, and week index is greater than week_of_shock.
+        # Note: Different shock occurs each week after week_of_shock.
+        if shock_option == 'GENERATION_SHOCK':
+            # Loop through all generators
+            for g in DCOPF.model.OMEGA_G:
+                # Initialise all generators to have a state of normal operation for each week
+                DCOPF.model.GENERATION_SHOCK_FACTOR[g] = float(df_generation_shock_factor.loc[g, week_index])
 
 
-        # Summary of all parameters defining the model
-        parameter_values = (update_mode, shock_option, permit_price, baseline, week_of_shock, rolling_scheme_revenue, update_gain)
-
-        # Convert parameters to string
-        parameter_values_string = ''.join([str(i) for i in parameter_values])
-
-        # Find sha256 of parameter values - used as a unique identifier for the model run
-        run_id = hashlib.sha256(parameter_values_string.encode('utf-8')).hexdigest()[:8].upper()
-
-        # Summary of model options, identified by the hash value of these options
-        run_summary = {run_id: {'update_mode': update_mode, 'shock_option': shock_option, 'permit_price': permit_price, 
-                                'baseline': baseline, 'week_of_shock': week_of_shock, 
-                                'rolling_scheme_revenue': rolling_scheme_revenue,
-                                'target_scheme_revenue': target_scheme_revenue, 'update_gain': update_gain}}
+        # Apply emissions intensity shock if run mode specified. Shock occurs once at week index 
+        # given by week_of_shock
+        elif (shock_option == 'EMISSIONS_INTENSITY_SHOCK') and (week_index == week_of_shock):
+            # Loop through generators
+            for g in DCOPF.model.OMEGA_G:
+                # Augement generator emissions intensity factor
+                DCOPF.model.EMISSIONS_INTENSITY_SHOCK_FACTOR[g] = float(df_emissions_intensity_shock_factor.loc[g])
 
 
-        # Check if model parameters valid
-        # -------------------------------
-        if update_mode not in ['NO_UPDATE', 'HISTORIC_UPDATE', 'HOOKE_UPDATE']:
-            raise Warning(f'Unexpected update_mode encountered: {update_mode}')
+        # For each representative scenario approximating a week's operating state
+        for scenario_index in DCOPF.df_scenarios.columns.levels[1]:        
+            # Update model parameters
+            DCOPF.update_model_parameters(week_index=week_index, scenario_index=scenario_index, baseline=baseline, permit_price=permit_price)
 
-        if shock_option not in ['NO_SHOCKS', 'GENERATION_SHOCK', 'EMISSIONS_INTENSITY_SHOCK']:
-            raise Warning(f'Unexpected shock_option encountered: {shock_option}')
-
-
-        # Create model object
-        # -------------------
-        # Instantiate DCOPF model object
-        DCOPF = DCOPFModel(data_dir=data_dir, scenarios_dir=scenarios_dir)
+            # Solve model
+            DCOPF.solve_model()
 
 
-        # Result containers
-        # -----------------
-        # Power output for each generator for each scenario
-        scenario_power_output = dict()
+            # Store results
+            # -------------
+            # Power output from each generator
+            scenario_power_output[(week_index, scenario_index)] = DCOPF.model.p.get_values()
 
-        # Prices at each node for each scenario
-        scenario_nodal_prices = dict()
+            # Nodal prices
+            scenario_nodal_prices[(week_index, scenario_index)] = {n: DCOPF.model.dual[DCOPF.model.POWER_BALANCE[n]] for n in DCOPF.model.OMEGA_N}
 
-        # Emissions intensity baseline
-        week_baseline = dict()
 
-        # Rolling scheme revenue
-        week_rolling_scheme_revenue = dict()
-        
-        
-        # Random shocks (set seed so these will be the same for each scenario)
-        # --------------------------------------------------------------------
-        np.random.seed(10)
-        # Specify if generator is on / off for a given week (1=generator is available, 0=generator unavailable)
-        df_generation_shock_indicator = pd.DataFrame(index=DCOPF.model.OMEGA_G, columns=DCOPF.df_scenarios.columns.levels[0], data=1)
+        # Compute aggregate statistics for week just past
+        aggregate_weekly_statistics = get_aggregate_weekly_statistics(DCOPF, scenario_power_output, week_index, baseline, permit_price)
 
-        # Pick a uniformly distributed random number between 0 and 1. If > 0.95 (i.e. a 5% chance)
-        # turn generator off for the given week. Only apply generation shocks to weeks after and 
-        # including week_of_shock.
-        df_generation_shock_indicator.loc[:, week_of_shock:] = df_generation_shock_indicator.loc[:, week_of_shock:].applymap(lambda x: 0 if np.random.uniform(0, 1) > 0.95 else 1)
-        
-        # Augment original emissions intensity by random scaling factor between 0.8 and 1
-        df_emissions_intensity_shock_factor = pd.Series(index=DCOPF.model.OMEGA_G, data=np.random.uniform(0.8, 1, len(DCOPF.model.OMEGA_G)))
+        # Update rolling scheme revenue
+        rolling_scheme_revenue += aggregate_weekly_statistics['net_revenue']
 
-        
-        # Run scenarios
-        # -------------
-        # For each week
-        for week_index in DCOPF.df_scenarios.columns.levels[0][:5]:
-            # Start clock to see how long it takes to solve all scenarios for each week
-            t0 = time.time()
+        # Record rolling scheme revenue
+        week_rolling_scheme_revenue[week_index] = rolling_scheme_revenue
 
-            # Record baseline applying for the given week
-            week_baseline[week_index] = baseline
 
-            # Apply generation shock if run mode specified, and week index is greater than week_of_shock.
-            # Note: Different shock occurs each week after week_of_shock.
-            if shock_option == 'GENERATION_SHOCK':
-                # Loop through all generators
-                for g in DCOPF.model.OMEGA_G:
-                    # Initialise all generators to have a state of normal operation for each week
-                    DCOPF.model.GENERATION_SHOCK_INDICATOR[g] = float(df_generation_shock_indicator.loc[g, week_index])
+        # Update baseline
+        # ---------------
+        if update_mode == 'NO_UPDATE':
+            # No update to baseline (should be 0 tCO2/MWh)
+            baseline = baseline
+
+        elif update_mode == 'HISTORIC_UPDATE':
+            # Update baseline based on historic average emissions intensity and total energy output
+            # (assumes next week will be similar to the week just gone)
+            baseline += aggregate_weekly_statistics['average_regulated_emissions_intensity'] - update_gain * ((target_scheme_revenue - rolling_scheme_revenue) / (permit_price * aggregate_weekly_statistics['energy_MWh']))
+            
+            # Set baseline to 0 if updated value less than zero
+            if baseline < 0:
+                baseline = 0
             
             
-            # Apply emissions intensity shock if run mode specified. Shock occurs once at week index 
-            # given by week_of_shock
-            elif (shock_option == 'EMISSIONS_INTENSITY_SHOCK') and (week_index == week_of_shock):
-                # Loop through generators
-                for g in DCOPF.model.OMEGA_G:
-                    # Augement generator emissions intensity factor
-                    DCOPF.model.EMISSIONS_INTENSITY_SHOCK_FACTOR[g] = float(df_emissions_intensity_shock_factor.loc[g])
-                    
-                    
-            # For each representative scenario approximating a week's operating state
-            for scenario_index in DCOPF.df_scenarios.columns.levels[1]:        
-                # Update model parameters
-                DCOPF.update_model_parameters(week_index=week_index, scenario_index=scenario_index, baseline=baseline, permit_price=permit_price)
-
-                # Solve model
-                DCOPF.solve_model()
-
-                
-                # Store results
-                # -------------
-                # Power output from each generator
-                scenario_power_output[(week_index, scenario_index)] = DCOPF.model.p.get_values()
-
-                # Nodal prices
-                scenario_nodal_prices[(week_index, scenario_index)] = {n: DCOPF.model.dual[DCOPF.model.POWER_BALANCE[n]] for n in DCOPF.model.OMEGA_N}
-
-                
-            # Compute aggregate statistics for week just past
-            aggregate_weekly_statistics = get_aggregate_weekly_statistics(DCOPF, scenario_power_output, week_index, baseline)
-
-            # Update rolling scheme revenue
-            rolling_scheme_revenue += aggregate_weekly_statistics['net_revenue']
-
-            # Record rolling scheme revenue
-            week_rolling_scheme_revenue[week_index] = rolling_scheme_revenue
-
-
-            # Update baseline
-            # ---------------
-            if update_mode == 'BAU':
-                # No update to baseline (should be 0 tCO2/MWh)
-                baseline = baseline
-
-            elif update_mode == 'HISTORIC_UPDATE':
-                # Update baseline based on historic average emissions intensity and total energy output
-                # (assumes next week will be similar to the week just gone)
-                baseline += aggregate_weekly_statistics['average_regulated_emissions_intensity'] - update_gain * ((target_scheme_revenue - rolling_scheme_revenue) / (permit_price * aggregate_weekly_statistics['energy_MWh']))
-
-            elif update_mode == 'BASELINE_ADJUSTMENT':
-                # Increment last week's baseline by an amount proportional to the different 
-                # between rolling scheme revenue and the target, scaled by energy output in the week just past.
-                baseline += baseline - update_gain * ((target_scheme_revenue - rolling_scheme_revenue) / (permit_price * aggregate_weekly_statistics['energy_MWh']))
-
-            print(f'Completed week {week_index} in {time.time()-t0:.2f}s')
-
-
-        # Save results
-        # ------------
-        with open(f'output/{run_id}_scenario_nodal_prices.pickle', 'wb') as f:
-            pickle.dump(scenario_nodal_prices, f)
-
-        with open(f'output/{run_id}_scenario_power_output.pickle', 'wb') as f:
-            pickle.dump(scenario_power_output, f)
-
-        with open(f'output/{run_id}_week_baseline.pickle', 'wb') as f:
-            pickle.dump(week_baseline, f)
-
-        with open(f'output/{run_id}_run_summary.pickle', 'wb') as f:
-            pickle.dump(run_summary, f)
+        elif update_mode == 'HOOKE_UPDATE':
+            # Increment last week's baseline by an amount proportional to the different 
+            # between rolling scheme revenue and the target, scaled by energy output in the week just past.
+            baseline += - update_gain * ((target_scheme_revenue - rolling_scheme_revenue) / (permit_price * aggregate_weekly_statistics['energy_MWh']))
             
-        with open(f'output/{run_id}_generation_shock_indicator.pickle', 'wb') as f:
-            pickle.dump(df_generation_shock_indicator, f)
+            # Set baseline to 0 if updated value less than zero
+            if baseline < 0:
+                baseline = 0
 
-        with open(f'output/{run_id}_emissions_intensity_shock_factor.pickle', 'wb') as f:
-            pickle.dump(df_emissions_intensity_shock_factor, f)
+        print(f'Completed week {week_index} in {time.time()-t0:.2f}s')
 
+
+    # Save results
+    # ------------
+    with open(f'output/{run_id}_scenario_nodal_prices.pickle', 'wb') as f:
+        pickle.dump(scenario_nodal_prices, f)
+
+    with open(f'output/{run_id}_scenario_power_output.pickle', 'wb') as f:
+        pickle.dump(scenario_power_output, f)
+
+    with open(f'output/{run_id}_week_baseline.pickle', 'wb') as f:
+        pickle.dump(week_baseline, f)
+        
+    with open(f'output/{run_id}_week_rolling_scheme_revenue.pickle', 'wb') as f:
+        pickle.dump(week_rolling_scheme_revenue, f)
+
+    with open(f'output/{run_id}_run_summary.pickle', 'wb') as f:
+        pickle.dump(run_summary, f)
+
+    with open(f'output/{run_id}_generation_shock_factor.pickle', 'wb') as f:
+        pickle.dump(df_generation_shock_factor, f)
+
+    with open(f'output/{run_id}_emissions_intensity_shock_factor.pickle', 'wb') as f:
+        pickle.dump(df_emissions_intensity_shock_factor, f)
+
+    with open(f'output/{run_id}_generators.pickle', 'wb') as f:
+        pickle.dump(DCOPF.df_g, f)
+        
+        
+    return run_id
+
+
+# Run model with different scenarios
 
 # In[4]:
 
 
-with open(f'output/{run_id}_run_summary.pickle', 'rb') as f:
-    runs = pickle.load(f)
+# # Business-as-usual scenario
+# bau_id = run_model(data_dir=data_dir,
+#                    scenarios_dir=scenarios_dir, 
+#                    shock_option='NO_SHOCKS', 
+#                    update_mode='NO_UPDATE', 
+#                    initial_permit_price=0, 
+#                    initial_baseline=0, 
+#                    initial_rolling_scheme_revenue=0)
+
+# # Run model with different shocks
+# for shock_option in ['NO_SHOCKS', 'GENERATION_SHOCK', 'EMISSIONS_INTENSITY_SHOCK']:
     
-pd.DataFrame.from_dict(runs, orient='index')
+#     # Run model with different update methods
+#     for update_mode in ['NO_UPDATE', 'HOOKE_UPDATE', 'HISTORIC_UPDATE']:
+#         run_model(data_dir=data_dir, 
+#                   scenarios_dir=scenarios_dir, 
+#                   shock_option=shock_option, 
+#                   update_mode=update_mode, 
+#                   update_gain=1, 
+#                   week_of_shock=10, 
+#                   target_scheme_revenue=0, 
+#                   initial_permit_price=40, 
+#                   initial_baseline=1, 
+#                   initial_rolling_scheme_revenue=0, 
+#                   seed=10)
+
+
+# Specific scenarios
+# ------------------
+run_model(data_dir=data_dir, 
+          scenarios_dir=scenarios_dir,
+          shock_option='EMISSIONS_INTENSITY_SHOCK',
+          update_mode='HOOKE_UPDATE',
+          update_gain=1,
+          week_of_shock=10,
+          target_scheme_revenue=0,
+          initial_permit_price=40,
+          initial_baseline=1,
+          initial_rolling_scheme_revenue=0,
+          seed=10)
 
