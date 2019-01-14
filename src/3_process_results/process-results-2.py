@@ -119,11 +119,11 @@ df_o = pd.merge(df_o, df_scenario_duration, how='left', left_on=['week_index', '
 # Get emissions, NEM region, and fuel type for each DUID
 df_o = pd.merge(df_o, df_g[['EMISSIONS', 'NEM_REGION', 'FUEL_TYPE']], how='left', left_on='DUID', right_index=True)
 
-# Emissions intensities change after week_of_shock if 'EMISSIONS_INTENSITY_SHOCK' imposed
-df_o['EMISSIONS_SHOCK'] = df_o.apply(lambda x: x['EMISSIONS'] if x['week_index'] < run_summaries.loc[run_id, 'week_of_shock'] else df_emissions_shock_factor.loc[x['DUID']] * x['EMISSIONS'], axis=1)
-
 # Total energy output for each DUID and each scenario
 df_o['energy_MWh'] = df_o['power_pu'].mul(100).mul(df_o['duration_hrs'])
+
+# Emissions intensities change after week_of_shock if 'EMISSIONS_INTENSITY_SHOCK' imposed
+df_o['EMISSIONS_SHOCK'] = df_o.apply(lambda x: x['EMISSIONS'] if x['week_index'] < run_summaries.loc[run_id, 'week_of_shock'] else df_emissions_shock_factor.loc[x['DUID']] * x['EMISSIONS'], axis=1)
 
 # Total emissions for each DUID and each scenario
 if run_summaries.loc[run_id, 'shock_option'] == 'EMISSIONS_INTENSITY_SHOCK':
@@ -205,7 +205,7 @@ pd.DataFrame.from_dict(week_rolling_scheme_revenue, orient='index').plot(title='
 plt.show()
 
 
-# In[11]:
+# In[6]:
 
 
 def get_weekly_statistics(df_o, week_index, baseline, permit_price, emissions_shock=False):
@@ -223,9 +223,102 @@ def get_weekly_statistics(df_o, week_index, baseline, permit_price, emissions_sh
     return df_wk[['energy_MWh', 'net_scheme_revenue', 'emissions_tCO2']].sum().to_dict()
 
 
+# In[140]:
 
 
-# In[20]:
+from pyomo.environ import *
+
+def mpc_baseline_update(df_o, week_index, forecast_interval, permit_price, initial_rolling_scheme_revenue, target_rolling_scheme_revenue, initial_emissions_intensity_baseline, emissions_shock):
+    "Compute baseline path using model predictive control"
+    
+    # Initialise model object
+    model = ConcreteModel()
+
+    # Predicted emissions intensity
+    predicted_energy = df_o.groupby(['DUID', 'week_index'])['energy_MWh'].sum()
+
+    # Predicted emissions intensity for regulated generators
+    if emissions_shock:
+        predicted_emissions_intensities = df_o.groupby(['DUID', 'week_index'])['EMISSIONS_SHOCK'].mean()
+    else:
+        predicted_emissions_intensities = df_o.groupby(['DUID', 'week_index'])['EMISSIONS'].mean()
+
+
+    # Sets
+    # ----
+    # Generators
+    model.OMEGA_G = Set(initialize=df_o['DUID'].unique())
+
+    # Time index
+    model.OMEGA_T = Set(initialize=range(week_index, week_index+forecast_interval+1), ordered=True)
+
+
+    # Parameters
+    # ----------
+    # Predicted generator emissions intensity for future periods
+    def EMISSIONS_PRED_RULE(model, g, t):
+        return float(predicted_emissions_intensities.loc[(g, t)] * np.random.uniform(0.9, 1.1))
+    model.EMISSIONS_PRED = Param(model.OMEGA_G, model.OMEGA_T, rule=EMISSIONS_PRED_RULE, mutable=True)
+
+    # Predicted weekly energy output
+    def ENERGY_PRED_RULE(model, g, t):
+        return float(predicted_energy.loc[(g, t)] * np.random.uniform(0.9, 1.1))
+    model.ENERGY_PRED = Param(model.OMEGA_G, model.OMEGA_T, rule=ENERGY_PRED_RULE, mutable=True)
+
+    # Permit price
+    model.PERMIT_PRICE = Param(initialize=permit_price, mutable=True)
+
+    # Initial rolling scheme revenue
+    model.INITIAL_ROLLING_SCHEME_REVENUE = Param(initialize=initial_rolling_scheme_revenue, mutable=True)
+
+    # Emissions intensity baseline from previous period
+    model.INITIAL_EMISSIONS_INTENSITY_BASELINE = Param(initialize=initial_emissions_intensity_baseline, mutable=True)
+
+    # Rolling scheme revenue target at end of finite horizon
+    model.TARGET_ROLLING_SCHEME_REVENUE = Param(initialize=target_rolling_scheme_revenue, mutable=True)
+    
+    
+    # Variables
+    # ---------
+    # Emissions intensity baseline
+    model.phi = Var(model.OMEGA_T)
+
+
+    # Constraints
+    # -----------
+    # Scheme revenue must be 0 at end of model horizon
+    model.SCHEME_REVENUE = Constraint(expr=model.INITIAL_ROLLING_SCHEME_REVENUE + sum((model.EMISSIONS_PRED[g, t] - model.phi[t]) * model.ENERGY_PRED[g, t] * model.PERMIT_PRICE for g in model.OMEGA_G for t in model.OMEGA_T) == 0)
+
+    # Baseline must be non-negative
+    def BASELINE_NONNEGATIVE_RULE(model, t):
+        return model.phi[t] >= 0
+    model.BASELINE_NONNEGATIVE = Constraint(model.OMEGA_T, rule=BASELINE_NONNEGATIVE_RULE)
+
+    # Objective function
+    # ------------------
+    # Minimise changes to baseline over finite time horizon
+    model.OBJECTIVE = Objective(expr=(sum( (model.phi[t] - model.phi[t-1]) * (model.phi[t] - model.phi[t-1]) 
+                                          for t in model.OMEGA_T if t > model.OMEGA_T.first()) 
+                                      + ((model.phi[model.OMEGA_T.first()] - model.INITIAL_EMISSIONS_INTENSITY_BASELINE) * (model.phi[model.OMEGA_T.first()] - model.INITIAL_EMISSIONS_INTENSITY_BASELINE)))
+                               )
+
+    # Solve model
+    opt = SolverFactory('gurobi', solver_io='lp')
+    opt.solve(model)
+
+    # Return forecast baselines
+    return OrderedDict(model.phi.get_values())
+
+
+# In[114]:
+
+
+plt.clf()
+pd.DataFrame.from_dict(baseline_path, orient='index').plot()
+plt.show()
+
+
+# In[149]:
 
 
 week_index = 1
@@ -233,7 +326,8 @@ baseline = 1.02
 target_scheme_revenue = 0
 rolling_scheme_revenue = 0
 permit_price = run_summaries.loc[run_id, 'initial_permit_price']
-update_gain = 0.4
+update_gain = 0.7
+forecast_interval=5
 
 weekly_baseline = dict()
 weekly_rolling_scheme_revenue = dict()
@@ -261,10 +355,18 @@ for week_index in range(1, 53):
         # Next week regulated emissions intensity
         next_week_regulated_emissions_intensity = next_week_statistics['emissions_tCO2'] / next_week_statistics['energy_MWh']
         
-    # Hooke update
+    # Historic update
 #     baseline = (next_week_regulated_emissions_intensity) - update_gain * ((target_scheme_revenue - rolling_scheme_revenue) / (permit_price * (next_week_regulated_energy)))
-    baseline += - update_gain * ((target_scheme_revenue - rolling_scheme_revenue) / (permit_price * next_week_regulated_energy))
+#     baseline = (current_week_statistics['emissions_tCO2'] / current_week_statistics['energy_MWh']) - update_gain * ((target_scheme_revenue - rolling_scheme_revenue) / (permit_price * (current_week_statistics['energy_MWh'])))
+
+    # Hooke update
+#     baseline += - update_gain * ((target_scheme_revenue - rolling_scheme_revenue) / (permit_price * next_week_regulated_energy))
 #     baseline += - update_gain * ((target_scheme_revenue - rolling_scheme_revenue) / (permit_price * current_week_statistics['energy_MWh']))
+
+    # MPDC update - Implement MPC to forecast optimal baseline path to rebalance scheme revenue
+    if week_index <= 52 - forecast_interval:
+        baseline_path = mpc_baseline_update(df_o=df_o, week_index=week_index, forecast_interval=forecast_interval, permit_price=40, initial_rolling_scheme_revenue=rolling_scheme_revenue, target_rolling_scheme_revenue=0, initial_emissions_intensity_baseline=baseline, emissions_shock=True)
+    baseline = baseline_path[week_index]
 
     # Set baseline equal to zero if update results in a negative value
     if baseline < 0:
@@ -273,22 +375,11 @@ for week_index in range(1, 53):
 
 plt.clf()
 ax = pd.DataFrame.from_dict(weekly_baseline, orient='index').plot()
+df_combined_stats.loc['NATIONAL', 'average_regulated_emissions_intensity'].plot(ax=ax)
 ax.set_ylim([0.5, 1.2])
 plt.show()
 
 plt.clf()
 ax = pd.DataFrame.from_dict(weekly_rolling_scheme_revenue, orient='index').plot()
 plt.show()
-
-
-# In[8]:
-
-
-run_summaries.loc[run_id, 'shock_option']
-
-
-# In[9]:
-
-
-pd.DataFrame(scenario_power_output).loc[:, (week_index, slice(None))].reset_index().melt(id_vars=['index']).rename(columns={'variable_0': 'week', 'variable_1': 'scenario', 'value': 'power_pu'}).astype({'week': int, 'scenario': int})
 
