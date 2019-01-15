@@ -12150,7 +12150,7 @@ div#notebook {
         
         <span class="c1"># Max power output</span>
         <span class="k">def</span> <span class="nf">P_MAX_RULE</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">g</span><span class="p">):</span>
-            <span class="k">return</span> <span class="n">model</span><span class="o">.</span><span class="n">p</span><span class="p">[</span><span class="n">g</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">model</span><span class="o">.</span><span class="n">REGISTERED_CAPACITY</span><span class="p">[</span><span class="n">g</span><span class="p">]</span> <span class="o">*</span> <span class="n">model</span><span class="o">.</span><span class="n">GENERATION_SHOCK_FACTOR</span><span class="p">[</span><span class="n">g</span><span class="p">]</span>
+            <span class="k">return</span> <span class="n">model</span><span class="o">.</span><span class="n">p</span><span class="p">[</span><span class="n">g</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">model</span><span class="o">.</span><span class="n">REGISTERED_CAPACITY</span><span class="p">[</span><span class="n">g</span><span class="p">]</span>
         <span class="n">model</span><span class="o">.</span><span class="n">P_MAX</span> <span class="o">=</span> <span class="n">Constraint</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">OMEGA_G</span><span class="p">,</span> <span class="n">rule</span><span class="o">=</span><span class="n">P_MAX_RULE</span><span class="p">)</span>
 
         <span class="c1"># Reference angle</span>
@@ -12184,19 +12184,22 @@ div#notebook {
         <span class="n">model</span><span class="o">.</span><span class="n">E_HAT</span> <span class="o">=</span> <span class="n">Expression</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">OMEGA_G</span><span class="p">,</span> <span class="n">rule</span><span class="o">=</span><span class="n">E_HAT_RULE</span><span class="p">)</span>
         
         <span class="c1"># Total emissions [tCO2]</span>
-        <span class="n">model</span><span class="o">.</span><span class="n">TOTAL_EMISSIONS</span> <span class="o">=</span> <span class="n">Expression</span><span class="p">(</span><span class="n">expr</span><span class="o">=</span><span class="nb">sum</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">p</span><span class="p">[</span><span class="n">g</span><span class="p">]</span> <span class="o">*</span> <span class="n">model</span><span class="o">.</span><span class="n">E_HAT</span><span class="p">[</span><span class="n">g</span><span class="p">]</span> <span class="o">*</span> <span class="n">model</span><span class="o">.</span><span class="n">SCENARIO_DURATION</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">model</span><span class="o">.</span><span class="n">OMEGA_G</span><span class="p">))</span>
+        <span class="n">model</span><span class="o">.</span><span class="n">TOTAL_EMISSIONS</span> <span class="o">=</span> <span class="n">Expression</span><span class="p">(</span><span class="n">expr</span><span class="o">=</span><span class="nb">sum</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">p</span><span class="p">[</span><span class="n">g</span><span class="p">]</span> <span class="o">*</span> <span class="n">model</span><span class="o">.</span><span class="n">BASE_POWER</span> <span class="o">*</span> <span class="n">model</span><span class="o">.</span><span class="n">E_HAT</span><span class="p">[</span><span class="n">g</span><span class="p">]</span> <span class="o">*</span> <span class="n">model</span><span class="o">.</span><span class="n">SCENARIO_DURATION</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">model</span><span class="o">.</span><span class="n">OMEGA_G</span><span class="p">))</span>
+        
+        <span class="c1"># Total energy demand [MWh]</span>
+        <span class="n">model</span><span class="o">.</span><span class="n">TOTAL_ENERGY_DEMAND</span> <span class="o">=</span> <span class="n">Expression</span><span class="p">(</span><span class="n">expr</span><span class="o">=</span><span class="nb">sum</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">D</span><span class="p">[</span><span class="n">n</span><span class="p">]</span> <span class="o">*</span> <span class="n">model</span><span class="o">.</span><span class="n">BASE_POWER</span> <span class="o">*</span> <span class="n">model</span><span class="o">.</span><span class="n">SCENARIO_DURATION</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">model</span><span class="o">.</span><span class="n">OMEGA_N</span><span class="p">))</span>
         
         <span class="c1"># Total energy output from regulated generators [MWh]</span>
-        <span class="n">model</span><span class="o">.</span><span class="n">TOTAL_REGULATED_GENERATOR_ENERGY</span> <span class="o">=</span> <span class="n">Expression</span><span class="p">(</span><span class="n">expr</span><span class="o">=</span><span class="nb">sum</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">p</span><span class="p">[</span><span class="n">g</span><span class="p">]</span> <span class="o">*</span> <span class="n">model</span><span class="o">.</span><span class="n">SCENARIO_DURATION</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">model</span><span class="o">.</span><span class="n">OMEGA_G</span><span class="p">))</span>
+        <span class="n">model</span><span class="o">.</span><span class="n">TOTAL_REGULATED_GENERATOR_ENERGY</span> <span class="o">=</span> <span class="n">Expression</span><span class="p">(</span><span class="n">expr</span><span class="o">=</span><span class="nb">sum</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">p</span><span class="p">[</span><span class="n">g</span><span class="p">]</span> <span class="o">*</span> <span class="n">model</span><span class="o">.</span><span class="n">BASE_POWER</span> <span class="o">*</span> <span class="n">model</span><span class="o">.</span><span class="n">SCENARIO_DURATION</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">model</span><span class="o">.</span><span class="n">OMEGA_G</span><span class="p">))</span>
         
         <span class="c1"># Average emissions intensity of regulated generators [tCO2/MWh]</span>
         <span class="n">model</span><span class="o">.</span><span class="n">AVERAGE_EMISSIONS_INTENSITY_REGULATED_GENERATORS</span> <span class="o">=</span> <span class="n">Expression</span><span class="p">(</span><span class="n">expr</span><span class="o">=</span><span class="n">model</span><span class="o">.</span><span class="n">TOTAL_EMISSIONS</span> <span class="o">/</span> <span class="n">model</span><span class="o">.</span><span class="n">TOTAL_REGULATED_GENERATOR_ENERGY</span><span class="p">)</span>
         
         <span class="c1"># Average emissions intensity of system [tCO2/MWh]</span>
-        <span class="n">model</span><span class="o">.</span><span class="n">AVERAGE_EMISSIONS_INTENSITY_SYSTEM</span> <span class="o">=</span> <span class="n">Expression</span><span class="p">(</span><span class="n">expr</span><span class="o">=</span><span class="n">model</span><span class="o">.</span><span class="n">TOTAL_EMISSIONS</span> <span class="o">/</span> <span class="n">model</span><span class="o">.</span><span class="n">D</span><span class="p">)</span>
+        <span class="n">model</span><span class="o">.</span><span class="n">AVERAGE_EMISSIONS_INTENSITY_SYSTEM</span> <span class="o">=</span> <span class="n">Expression</span><span class="p">(</span><span class="n">expr</span><span class="o">=</span><span class="n">model</span><span class="o">.</span><span class="n">TOTAL_EMISSIONS</span> <span class="o">/</span> <span class="n">model</span><span class="o">.</span><span class="n">TOTAL_ENERGY_DEMAND</span><span class="p">)</span>
         
         <span class="c1"># Net scheme revenue [$]</span>
-        <span class="n">model</span><span class="o">.</span><span class="n">NET_SCHEME_REVENUE</span> <span class="o">=</span> <span class="n">Expression</span><span class="p">(</span><span class="n">expr</span><span class="o">=</span><span class="nb">sum</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">E_HAT</span><span class="p">[</span><span class="n">g</span><span class="p">]</span> <span class="o">-</span> <span class="n">model</span><span class="o">.</span><span class="n">PHI</span><span class="p">)</span> <span class="o">*</span> <span class="n">model</span><span class="o">.</span><span class="n">p</span><span class="p">[</span><span class="n">g</span><span class="p">]</span> <span class="o">*</span> <span class="n">model</span><span class="o">.</span><span class="n">TAU</span> <span class="o">*</span> <span class="n">model</span><span class="o">.</span><span class="n">SCENARIO_DURATION</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">model</span><span class="o">.</span><span class="n">OMEGA_G</span><span class="p">)</span>
+        <span class="n">model</span><span class="o">.</span><span class="n">NET_SCHEME_REVENUE</span> <span class="o">=</span> <span class="n">Expression</span><span class="p">(</span><span class="n">expr</span><span class="o">=</span><span class="nb">sum</span><span class="p">((</span><span class="n">model</span><span class="o">.</span><span class="n">E_HAT</span><span class="p">[</span><span class="n">g</span><span class="p">]</span> <span class="o">-</span> <span class="n">model</span><span class="o">.</span><span class="n">PHI</span><span class="p">)</span> <span class="o">*</span> <span class="n">model</span><span class="o">.</span><span class="n">p</span><span class="p">[</span><span class="n">g</span><span class="p">]</span> <span class="o">*</span> <span class="n">model</span><span class="o">.</span><span class="n">BASE_POWER</span> <span class="o">*</span> <span class="n">model</span><span class="o">.</span><span class="n">SCENARIO_DURATION</span> <span class="o">*</span> <span class="n">model</span><span class="o">.</span><span class="n">TAU</span> <span class="o">*</span> <span class="n">model</span><span class="o">.</span><span class="n">BASE_POWER</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">model</span><span class="o">.</span><span class="n">OMEGA_G</span><span class="p">))</span>
         
 
         <span class="c1"># Objective</span>
@@ -12271,7 +12274,7 @@ div#notebook {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[&nbsp;]:</div>
+<div class="prompt input_prompt">In&nbsp;[2]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="kn">from</span> <span class="nn">collections</span> <span class="k">import</span> <span class="n">OrderedDict</span>
@@ -12283,7 +12286,7 @@ div#notebook {
     
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">generator_index</span><span class="p">,</span> <span class="n">forecast_interval_length</span><span class="p">):</span>
         <span class="c1"># Create model object</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mpc_baseline_updater</span><span class="p">(</span><span class="n">generator_index</span><span class="p">,</span> <span class="n">forecast_interval_length</span><span class="o">=</span><span class="n">forecast_interval_length</span><span class="p">)</span>       
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mpc_baseline</span><span class="p">(</span><span class="n">generator_index</span><span class="p">,</span> <span class="n">forecast_interval_length</span><span class="o">=</span><span class="n">forecast_interval_length</span><span class="p">)</span>       
                 
         <span class="c1"># Define solver</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">opt</span> <span class="o">=</span> <span class="n">SolverFactory</span><span class="p">(</span><span class="s1">&#39;gurobi&#39;</span><span class="p">,</span> <span class="n">solver_io</span><span class="o">=</span><span class="s1">&#39;lp&#39;</span><span class="p">)</span>
@@ -12369,78 +12372,78 @@ div#notebook {
         <span class="k">return</span> <span class="n">model</span>
 
             
-        <span class="k">def</span> <span class="nf">update_model_parameter</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">forecast_generator_emissions_intensity</span><span class="p">,</span> <span class="n">forecast_generator_energy_output</span><span class="p">,</span> <span class="n">permit_price</span><span class="p">,</span> <span class="n">initial_emissions_intensity_baseline</span><span class="p">,</span> <span class="n">initial_rolling_scheme_revenue</span><span class="p">,</span> <span class="n">target_rolling_scheme_revenue</span><span class="p">):</span>
-            <span class="sd">&quot;&quot;&quot;Update parameters used as inputs for the MPC controller</span>
-<span class="sd">            </span>
-<span class="sd">            Parameters</span>
-<span class="sd">            ----------</span>
-<span class="sd">            forecast_generator_emissions_intensity : dict</span>
-<span class="sd">                Expected generator emissions intensities over forecast interval</span>
-<span class="sd">                </span>
-<span class="sd">            forecast_generator_energy_output : dict</span>
-<span class="sd">                Forecast weekly energy output from generators over the forecast interval      </span>
-<span class="sd">                </span>
-<span class="sd">            permit_price : float</span>
-<span class="sd">                Emissions price [tCO2/MWh]</span>
+    <span class="k">def</span> <span class="nf">update_model_parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">forecast_generator_emissions_intensity</span><span class="p">,</span> <span class="n">forecast_generator_energy_output</span><span class="p">,</span> <span class="n">permit_price</span><span class="p">,</span> <span class="n">initial_emissions_intensity_baseline</span><span class="p">,</span> <span class="n">initial_rolling_scheme_revenue</span><span class="p">,</span> <span class="n">target_rolling_scheme_revenue</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Update parameters used as inputs for the MPC controller</span>
 
-<span class="sd">            initial_emissions_intensity_baseline : float</span>
-<span class="sd">                Emissions intensity baseline implemented for preceding week [tCO2/MWh]</span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        forecast_generator_emissions_intensity : dict</span>
+<span class="sd">            Expected generator emissions intensities over forecast interval</span>
 
-<span class="sd">            initial_rolling_scheme_revenue : float</span>
-<span class="sd">                Rolling scheme revenue at end of preceding week [$]</span>
+<span class="sd">        forecast_generator_energy_output : dict</span>
+<span class="sd">            Forecast weekly energy output from generators over the forecast interval      </span>
 
-<span class="sd">            target_rolling_scheme_revenue : float</span>
-<span class="sd">                Target scheme revenue to be obtained in the future [$]</span>
-<span class="sd">            &quot;&quot;&quot;</span>
-            
-            <span class="c1"># For each time interval in the forecast horizon</span>
-            <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">OMEGA_T</span><span class="p">:</span>
-                <span class="c1"># For each generator</span>
-                <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">OMEGA_G</span><span class="p">:</span>
-                    <span class="c1"># Predicted generator emissions intensity for future periods</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">EMISSIONS_INTENSITY_FORECAST</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">forecast_generator_emissions_intensity</span><span class="p">[</span><span class="n">g</span><span class="p">][</span><span class="n">t</span><span class="p">])</span>
+<span class="sd">        permit_price : float</span>
+<span class="sd">            Emissions price [tCO2/MWh]</span>
 
-                    <span class="c1"># Predicted weekly energy output</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">ENERGY_FORECAST</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">forecast_generator_energy_output</span><span class="p">[</span><span class="n">g</span><span class="p">][</span><span class="n">t</span><span class="p">])</span>
+<span class="sd">        initial_emissions_intensity_baseline : float</span>
+<span class="sd">            Emissions intensity baseline implemented for preceding week [tCO2/MWh]</span>
 
-            <span class="c1"># Permit price</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">PERMIT_PRICE</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">permit_price</span><span class="p">)</span>
-            
-            <span class="c1"># Emissions intensity baseline from previous period</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">INITIAL_EMISSIONS_INTENSITY_BASELINE</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">initial_emissions_intensity_baseline</span><span class="p">)</span>
+<span class="sd">        initial_rolling_scheme_revenue : float</span>
+<span class="sd">            Rolling scheme revenue at end of preceding week [$]</span>
 
-            <span class="c1"># Initial rolling scheme revenue</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">INITIAL_ROLLING_SCHEME_REVENUE</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">initial_rolling_scheme_revenue</span><span class="p">)</span>
+<span class="sd">        target_rolling_scheme_revenue : float</span>
+<span class="sd">            Target scheme revenue to be obtained in the future [$]</span>
+<span class="sd">        &quot;&quot;&quot;</span>
 
-            <span class="c1"># Rolling scheme revenue target at end of forecast horizon</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">TARGET_ROLLING_SCHEME_REVENUE</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">target_rolling_scheme_revenue</span><span class="p">)</span>
+        <span class="c1"># For each time interval in the forecast horizon</span>
+        <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">OMEGA_T</span><span class="p">:</span>
+            <span class="c1"># For each generator</span>
+            <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">OMEGA_G</span><span class="p">:</span>
+                <span class="c1"># Predicted generator emissions intensity for future periods</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">EMISSIONS_INTENSITY_FORECAST</span><span class="p">[</span><span class="n">g</span><span class="p">,</span> <span class="n">t</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">forecast_generator_emissions_intensity</span><span class="p">[</span><span class="n">t</span><span class="p">][</span><span class="n">g</span><span class="p">])</span>
+                
+                <span class="c1"># Predicted weekly energy output</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">ENERGY_FORECAST</span><span class="p">[</span><span class="n">g</span><span class="p">,</span> <span class="n">t</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">forecast_generator_energy_output</span><span class="p">[</span><span class="n">t</span><span class="p">][</span><span class="n">g</span><span class="p">])</span>
+
+        <span class="c1"># Permit price</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">PERMIT_PRICE</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">permit_price</span><span class="p">)</span>
+
+        <span class="c1"># Emissions intensity baseline from previous period</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">INITIAL_EMISSIONS_INTENSITY_BASELINE</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">initial_emissions_intensity_baseline</span><span class="p">)</span>
+
+        <span class="c1"># Initial rolling scheme revenue</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">INITIAL_ROLLING_SCHEME_REVENUE</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">initial_rolling_scheme_revenue</span><span class="p">)</span>
+
+        <span class="c1"># Rolling scheme revenue target at end of forecast horizon</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">TARGET_ROLLING_SCHEME_REVENUE</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">target_rolling_scheme_revenue</span><span class="p">)</span>
             
 
-        <span class="k">def</span> <span class="nf">solve_model</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-            <span class="s2">&quot;Solve for optimal emissions intensity baseline path&quot;</span>
-            
-            <span class="bp">self</span><span class="o">.</span><span class="n">opt</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">)</span>
-                    
-                    
-        <span class="k">def</span> <span class="nf">get_optimal_baseline_path</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-            <span class="s2">&quot;Get optimal emissions intenstiy baseline path based on MPC controller&quot;</span>
-        
-            <span class="c1"># Optimal emissions intensity baseline path as determined by MPC controller</span>
-            <span class="n">optimal_baseline_path</span> <span class="o">=</span> <span class="n">OrderedDict</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">phi</span><span class="o">.</span><span class="n">get_values</span><span class="p">())</span>
-            
-            <span class="k">return</span> <span class="n">optimal_baseline_path</span>
-            
-            
-        <span class="k">def</span> <span class="nf">get_next_baseline</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-            <span class="s2">&quot;Get next baseline to be implemented for the coming week&quot;</span>
-            
-            <span class="c1"># Optimal path of baselines to be implemented over the finite horizon</span>
-            <span class="n">optimal_baseline_path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_optimal_baseline_path</span><span class="p">()</span>
-            
-            <span class="c1"># Next &#39;optimal&#39; emissions intensity baseline to implement for the coming interval</span>
-            <span class="n">next_baseline</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">optimal_baseline_path</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">OMEGA_T</span><span class="o">.</span><span class="n">first</span><span class="p">()])</span>
+    <span class="k">def</span> <span class="nf">solve_model</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="s2">&quot;Solve for optimal emissions intensity baseline path&quot;</span>
 
-            <span class="k">return</span> <span class="n">next_baseline</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">opt</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">)</span>
+
+
+    <span class="k">def</span> <span class="nf">get_optimal_baseline_path</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="s2">&quot;Get optimal emissions intenstiy baseline path based on MPC controller&quot;</span>
+
+        <span class="c1"># Optimal emissions intensity baseline path as determined by MPC controller</span>
+        <span class="n">optimal_baseline_path</span> <span class="o">=</span> <span class="n">OrderedDict</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">phi</span><span class="o">.</span><span class="n">get_values</span><span class="p">())</span>
+
+        <span class="k">return</span> <span class="n">optimal_baseline_path</span>
+
+
+    <span class="k">def</span> <span class="nf">get_next_baseline</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="s2">&quot;Get next baseline to be implemented for the coming week&quot;</span>
+
+        <span class="c1"># Optimal path of baselines to be implemented over the finite horizon</span>
+        <span class="n">optimal_baseline_path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_optimal_baseline_path</span><span class="p">()</span>
+
+        <span class="c1"># Next &#39;optimal&#39; emissions intensity baseline to implement for the coming interval</span>
+        <span class="n">next_baseline</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">optimal_baseline_path</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">OMEGA_T</span><span class="o">.</span><span class="n">first</span><span class="p">()])</span>
+
+        <span class="k">return</span> <span class="n">next_baseline</span>
 </pre></div>
 
 </div>
@@ -12468,7 +12471,7 @@ div#notebook {
 <span class="n">scenarios_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">curdir</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">pardir</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">pardir</span><span class="p">,</span> <span class="s1">&#39;1_create_scenarios&#39;</span><span class="p">,</span> <span class="s1">&#39;output&#39;</span><span class="p">)</span>  
 
 
-<span class="k">def</span> <span class="nf">run_model</span><span class="p">(</span><span class="n">data_dir</span><span class="p">,</span> <span class="n">scenarios_dir</span><span class="p">,</span> <span class="n">shock_option</span><span class="p">,</span> <span class="n">update_mode</span><span class="p">,</span> <span class="n">description</span><span class="p">,</span> <span class="n">week_of_shock</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">initial_permit_price</span><span class="o">=</span><span class="mi">40</span><span class="p">,</span> <span class="n">initial_baseline</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">initial_rolling_scheme_revenue</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="mi">10</span><span class="p">):</span>
+<span class="k">def</span> <span class="nf">run_model</span><span class="p">(</span><span class="n">data_dir</span><span class="p">,</span> <span class="n">scenarios_dir</span><span class="p">,</span> <span class="n">shock_option</span><span class="p">,</span> <span class="n">update_mode</span><span class="p">,</span> <span class="n">description</span><span class="p">,</span> <span class="n">forecast_generator_emissions_intensity</span><span class="o">=</span><span class="p">{},</span> <span class="n">forecast_generator_energy_output</span><span class="o">=</span><span class="p">{},</span> <span class="n">week_of_shock</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">initial_permit_price</span><span class="o">=</span><span class="mi">40</span><span class="p">,</span> <span class="n">target_scheme_revenue</span><span class="o">=</span><span class="p">{},</span> <span class="n">initial_baseline</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">initial_rolling_scheme_revenue</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="mi">10</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Run model with given parameters</span>
 
 <span class="sd">    Parameters</span>
@@ -12496,12 +12499,18 @@ div#notebook {
 <span class="sd">    description : str</span>
 <span class="sd">        Description of model / scenario being tested</span>
 <span class="sd">    </span>
+<span class="sd">    forecast_generator_emissions_intensity : dict</span>
+<span class="sd">        Forecast generator emissions intensities for future periods</span>
+<span class="sd">        </span>
+<span class="sd">    forecast_generator_energy_output : dict</span>
+<span class="sd">        Forecast generator energy output for future periods</span>
+<span class="sd">    </span>
 <span class="sd">    week_of_shock : int</span>
 <span class="sd">        Index for week at which either generation or emissions intensities shocks will be implemented / begin.</span>
 <span class="sd">        Default = 10.</span>
 
-<span class="sd">    target_scheme_revenue : float</span>
-<span class="sd">        Net scheme revenue target [$]. Default = $0.</span>
+<span class="sd">    target_scheme_revenue : dict</span>
+<span class="sd">        Net scheme revenue target defined for each period [$]. Default = $0 for all periods.</span>
 <span class="sd">        </span>
 <span class="sd">    initial_permit_price : float</span>
 <span class="sd">        Initialised permit price value [$/tCO2]. Default = 40 $/tCO2.</span>
@@ -12538,7 +12547,8 @@ div#notebook {
     <span class="n">run_summary</span> <span class="o">=</span> <span class="p">{</span><span class="n">run_id</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;shock_option&#39;</span><span class="p">:</span> <span class="n">shock_option</span><span class="p">,</span> 
                             <span class="s1">&#39;update_mode&#39;</span><span class="p">:</span> <span class="n">update_mode</span><span class="p">,</span>
                             <span class="s1">&#39;description&#39;</span><span class="p">:</span> <span class="n">description</span><span class="p">,</span>
-                            <span class="s1">&#39;week_of_shock&#39;</span><span class="p">:</span> <span class="n">week_of_shock</span><span class="p">,</span> 
+                            <span class="s1">&#39;week_of_shock&#39;</span><span class="p">:</span> <span class="n">week_of_shock</span><span class="p">,</span>
+                            <span class="s1">&#39;target_scheme_revenue&#39;</span><span class="p">:</span> <span class="n">target_scheme_revenue</span><span class="p">,</span>
                             <span class="s1">&#39;initial_permit_price&#39;</span><span class="p">:</span> <span class="n">initial_permit_price</span><span class="p">,</span>
                             <span class="s1">&#39;initial_baseline&#39;</span><span class="p">:</span> <span class="n">initial_baseline</span><span class="p">,</span> 
                             <span class="s1">&#39;initial_rolling_scheme_revenue&#39;</span><span class="p">:</span> <span class="n">initial_rolling_scheme_revenue</span><span class="p">,</span> 
@@ -12574,6 +12584,7 @@ div#notebook {
     <span class="c1"># Results for each scenario</span>
     <span class="n">scenario_metrics</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;net_scheme_revenue&#39;</span><span class="p">:</span> <span class="nb">dict</span><span class="p">(),</span>
                         <span class="s1">&#39;total_emissions_tCO2&#39;</span><span class="p">:</span> <span class="nb">dict</span><span class="p">(),</span>
+                        <span class="s1">&#39;regulated_generator_energy_MWh&#39;</span><span class="p">:</span> <span class="nb">dict</span><span class="p">(),</span>
                         <span class="s1">&#39;total_regulated_generator_energy_MWh&#39;</span><span class="p">:</span> <span class="nb">dict</span><span class="p">(),</span>
                         <span class="s1">&#39;total_demand_MWh&#39;</span><span class="p">:</span> <span class="nb">dict</span><span class="p">()</span>
                        <span class="p">}</span>
@@ -12582,7 +12593,9 @@ div#notebook {
     <span class="n">week_metrics</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;baseline&#39;</span><span class="p">:</span> <span class="nb">dict</span><span class="p">(),</span>
                     <span class="s1">&#39;net_scheme_revenue&#39;</span><span class="p">:</span> <span class="nb">dict</span><span class="p">(),</span>
                     <span class="s1">&#39;rolling_scheme_revenue&#39;</span><span class="p">:</span> <span class="nb">dict</span><span class="p">(),</span>
+                    <span class="s1">&#39;regulated_generator_emissions_intensities&#39;</span><span class="p">:</span> <span class="nb">dict</span><span class="p">(),</span>
                     <span class="s1">&#39;total_emissions_tCO2&#39;</span><span class="p">:</span> <span class="nb">dict</span><span class="p">(),</span>
+                    <span class="s1">&#39;regulated_generator_energy_MWh&#39;</span><span class="p">:</span> <span class="nb">dict</span><span class="p">(),</span>
                     <span class="s1">&#39;total_regulated_generator_energy_MWh&#39;</span><span class="p">:</span> <span class="nb">dict</span><span class="p">(),</span>
                     <span class="s1">&#39;total_demand_MWh&#39;</span><span class="p">:</span> <span class="nb">dict</span><span class="p">(),</span>
                     <span class="s1">&#39;average_emissions_intensity_regulated_generators&#39;</span><span class="p">:</span> <span class="nb">dict</span><span class="p">(),</span>
@@ -12601,32 +12614,99 @@ div#notebook {
 
     <span class="c1"># Run scenarios</span>
     <span class="c1"># -------------</span>
+    <span class="n">weeks</span> <span class="o">=</span> <span class="n">DCOPF</span><span class="o">.</span><span class="n">df_scenarios</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">levels</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
     <span class="c1"># For each week</span>
-    <span class="k">for</span> <span class="n">week_index</span> <span class="ow">in</span> <span class="n">DCOPF</span><span class="o">.</span><span class="n">df_scenarios</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">levels</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
+    <span class="k">for</span> <span class="n">week_index</span> <span class="ow">in</span> <span class="n">weeks</span><span class="p">:</span>
         <span class="c1"># Start clock to see how long it takes to solve all scenarios for each week</span>
         <span class="n">t0</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
-
+        
         <span class="c1"># Initialise policy parameters if the first week</span>
-        <span class="k">if</span> <span class="n">week_index</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
-            <span class="c1"># Initialise emissions intensity baseline</span>
-            <span class="n">baseline</span> <span class="o">=</span> <span class="n">initial_baseline</span>
-            
+        <span class="k">if</span> <span class="n">week_index</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>            
             <span class="c1"># Initialise permit price</span>
             <span class="n">permit_price</span> <span class="o">=</span> <span class="n">initial_permit_price</span>
             
             <span class="c1"># Initialise rolling scheme revenue</span>
             <span class="n">rolling_scheme_revenue</span> <span class="o">=</span> <span class="n">initial_rolling_scheme_revenue</span>
+        
+        
+        <span class="c1"># Update rolling scheme revenue (amount of money in bank account at start of calibration interval)</span>
+        <span class="k">if</span> <span class="n">week_index</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">rolling_scheme_revenue</span> <span class="o">+=</span> <span class="n">week_metrics</span><span class="p">[</span><span class="s1">&#39;net_scheme_revenue&#39;</span><span class="p">][</span><span class="n">week_index</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+        <span class="c1"># Record rolling scheme revenue at start of calibration interval [$]</span>
+        <span class="n">week_metrics</span><span class="p">[</span><span class="s1">&#39;rolling_scheme_revenue&#39;</span><span class="p">][</span><span class="n">week_index</span><span class="p">]</span> <span class="o">=</span> <span class="n">rolling_scheme_revenue</span>
+
+        
+        <span class="c1"># Compute baseline</span>
+        <span class="c1"># ----------------</span>
+        <span class="k">if</span> <span class="n">update_mode</span> <span class="o">==</span> <span class="s1">&#39;NO_UPDATE&#39;</span><span class="p">:</span>
+            <span class="c1"># No update to baseline (should be 0 tCO2/MWh)</span>
+            <span class="n">baseline</span> <span class="o">=</span> <span class="n">initial_baseline</span>
+
+        <span class="k">elif</span> <span class="n">update_mode</span> <span class="o">==</span> <span class="s1">&#39;REVENUE_REBALANCE_UPDATE&#39;</span><span class="p">:</span>
+            <span class="c1"># Forecast regulated generator emissions in next period</span>
+            <span class="n">forecast_regulated_generator_total_emissions</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">forecast_generator_emissions_intensity</span><span class="p">[</span><span class="n">week_index</span><span class="p">][</span><span class="n">g</span><span class="p">]</span> <span class="o">*</span> <span class="n">forecast_generator_energy_output</span><span class="p">[</span><span class="n">week_index</span><span class="p">][</span><span class="n">g</span><span class="p">]</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">DCOPF</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">OMEGA_G</span><span class="p">)</span>
+
+            <span class="c1"># Forecast regulated generator energy in next period</span>
+            <span class="n">forecast_regulated_generator_total_energy</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">forecast_generator_energy_output</span><span class="p">[</span><span class="n">week_index</span><span class="p">][</span><span class="n">g</span><span class="p">]</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">DCOPF</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">OMEGA_G</span><span class="p">)</span>
+
+            <span class="c1"># Forecast regulated generator average emissions intensity</span>
+            <span class="n">forecast_regulated_generator_average_emissions_intensity</span> <span class="o">=</span> <span class="n">forecast_regulated_generator_total_emissions</span> <span class="o">/</span> <span class="n">forecast_regulated_generator_total_energy</span>
+
+            <span class="c1"># Update baseline seeking to re-balance net scheme revenue every period based on forecast output</span>
+            <span class="n">baseline</span> <span class="o">=</span> <span class="n">forecast_regulated_generator_average_emissions_intensity</span> <span class="o">-</span> <span class="p">((</span><span class="n">target_scheme_revenue</span><span class="p">[</span><span class="n">week_index</span><span class="p">]</span> <span class="o">-</span> <span class="n">rolling_scheme_revenue</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">permit_price</span> <span class="o">*</span> <span class="n">forecast_regulated_generator_total_energy</span><span class="p">))</span>
+
+            <span class="c1"># Set baseline to 0 if updated value less than zero</span>
+            <span class="k">if</span> <span class="n">baseline</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">baseline</span> <span class="o">=</span> <span class="mi">0</span>
+        
+        <span class="k">elif</span> <span class="n">update_mode</span> <span class="o">==</span> <span class="s1">&#39;MPC_UPDATE&#39;</span><span class="p">:</span>
+            <span class="c1"># Update baseline using a Model Predictive Control paradigm. Goal is to minimise control </span>
+            <span class="c1"># action (movement of baseline) while achieving target scheme revenue 6 weeks in the future.</span>
             
+            <span class="c1"># If first week, set previous baseline to expected emissions intensity for coming week</span>
+            <span class="k">if</span> <span class="n">week_index</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">baseline</span> <span class="o">=</span> <span class="mf">1.02</span>
+                
+            <span class="k">if</span> <span class="n">week_index</span> <span class="o">&lt;=</span> <span class="n">weeks</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">forecast_interval_length</span> <span class="o">+</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">forecast_energy</span> <span class="o">=</span> <span class="n">forecast_generator_energy_output</span><span class="p">[</span><span class="n">week_index</span><span class="p">]</span>
+                <span class="n">forecast_emissions_intensity</span> <span class="o">=</span> <span class="n">forecast_generator_emissions_intensity</span><span class="p">[</span><span class="n">week_index</span><span class="p">]</span>
+            
+                <span class="c1"># Update MPC controller parameters</span>
+                <span class="n">MPC</span><span class="o">.</span><span class="n">update_model_parameters</span><span class="p">(</span><span class="n">forecast_generator_emissions_intensity</span><span class="o">=</span><span class="n">forecast_emissions_intensity</span><span class="p">,</span>
+                                      <span class="n">forecast_generator_energy_output</span><span class="o">=</span><span class="n">forecast_energy</span><span class="p">,</span>
+                                      <span class="n">permit_price</span><span class="o">=</span><span class="n">permit_price</span><span class="p">,</span>
+                                      <span class="n">initial_emissions_intensity_baseline</span><span class="o">=</span><span class="n">baseline</span><span class="p">,</span>
+                                      <span class="n">initial_rolling_scheme_revenue</span><span class="o">=</span><span class="n">rolling_scheme_revenue</span><span class="p">,</span>
+                                      <span class="n">target_rolling_scheme_revenue</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+                <span class="c1"># Solve model</span>
+                <span class="n">MPC</span><span class="o">.</span><span class="n">solve_model</span><span class="p">()</span>
+            
+                <span class="c1"># Get next baseline to be implemented</span>
+                <span class="n">baseline_path</span> <span class="o">=</span> <span class="n">MPC</span><span class="o">.</span><span class="n">get_optimal_baseline_path</span><span class="p">()</span>
+            
+                <span class="c1"># Baseline to be implemented</span>
+                <span class="n">baseline</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">baseline_path</span><span class="o">.</span><span class="n">items</span><span class="p">())[</span><span class="mi">0</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span>
+            
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># Find index of baseline from optimal path previously calculated</span>
+                <span class="n">baseline_path_index</span> <span class="o">=</span> <span class="n">week_index</span> <span class="o">-</span> <span class="p">(</span><span class="n">weeks</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">forecast_interval_length</span><span class="p">)</span>
+                
+                <span class="c1"># Baseline to be implemented</span>
+                <span class="n">baseline</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">baseline_path</span><span class="o">.</span><span class="n">items</span><span class="p">())[</span><span class="n">baseline_path_index</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span>
+                
         
         <span class="c1"># Record baseline applying for the given week</span>
         <span class="n">week_metrics</span><span class="p">[</span><span class="s1">&#39;baseline&#39;</span><span class="p">][</span><span class="n">week_index</span><span class="p">]</span> <span class="o">=</span> <span class="n">baseline</span>
+        
+
 
         <span class="c1"># Apply emissions intensity shock if shock option specified. Shock occurs once at week_index </span>
         <span class="c1"># given by week_of_shock</span>
         <span class="k">if</span> <span class="p">(</span><span class="n">shock_option</span> <span class="o">==</span> <span class="s1">&#39;EMISSIONS_INTENSITY_SHOCK&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">week_index</span> <span class="o">==</span> <span class="n">week_of_shock</span><span class="p">):</span>
             <span class="c1"># Loop through generators</span>
             <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">DCOPF</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">OMEGA_G</span><span class="p">:</span>
-                <span class="c1"># Augement generator emissions intensity factor</span>
+                <span class="c1"># Augment generator emissions intensity factor</span>
                 <span class="n">DCOPF</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">EMISSIONS_INTENSITY_SHOCK_FACTOR</span><span class="p">[</span><span class="n">g</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">df_emissions_intensity_shock_factor</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">g</span><span class="p">])</span>
 
         <span class="c1"># For each representative scenario approximating a week&#39;s operating state</span>
@@ -12658,20 +12738,29 @@ div#notebook {
             <span class="c1"># Total emissions [tCO2]</span>
             <span class="n">scenario_metrics</span><span class="p">[</span><span class="s1">&#39;total_emissions_tCO2&#39;</span><span class="p">][(</span><span class="n">week_index</span><span class="p">,</span> <span class="n">scenario_index</span><span class="p">)]</span> <span class="o">=</span> <span class="n">DCOPF</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">TOTAL_EMISSIONS</span><span class="o">.</span><span class="n">expr</span><span class="p">()</span>
             
+            <span class="c1"># Generator energy output</span>
+            <span class="n">scenario_metrics</span><span class="p">[</span><span class="s1">&#39;regulated_generator_energy_MWh&#39;</span><span class="p">][(</span><span class="n">week_index</span><span class="p">,</span> <span class="n">scenario_index</span><span class="p">)]</span> <span class="o">=</span> <span class="p">{</span><span class="n">g</span><span class="p">:</span> <span class="n">DCOPF</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">p</span><span class="p">[</span><span class="n">g</span><span class="p">]</span><span class="o">.</span><span class="n">value</span> <span class="o">*</span> <span class="n">DCOPF</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">BASE_POWER</span><span class="o">.</span><span class="n">value</span> <span class="o">*</span> <span class="n">DCOPF</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">SCENARIO_DURATION</span><span class="o">.</span><span class="n">value</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">DCOPF</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">OMEGA_G</span><span class="p">}</span>
+            
             <span class="c1"># Total emissions from regulated generators [tCO2]</span>
             <span class="n">scenario_metrics</span><span class="p">[</span><span class="s1">&#39;total_regulated_generator_energy_MWh&#39;</span><span class="p">][(</span><span class="n">week_index</span><span class="p">,</span> <span class="n">scenario_index</span><span class="p">)]</span> <span class="o">=</span> <span class="n">DCOPF</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">TOTAL_REGULATED_GENERATOR_ENERGY</span><span class="o">.</span><span class="n">expr</span><span class="p">()</span>
             
             <span class="c1"># Total system energy demand [MWh]</span>
-            <span class="n">scenario_metrics</span><span class="p">[</span><span class="s1">&#39;total_demand_MWh&#39;</span><span class="p">][(</span><span class="n">week_index</span><span class="p">,</span> <span class="n">scenario_index</span><span class="p">)]</span> <span class="o">=</span> <span class="n">DCOPF</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">D</span><span class="o">.</span><span class="n">value</span>
+            <span class="n">scenario_metrics</span><span class="p">[</span><span class="s1">&#39;total_demand_MWh&#39;</span><span class="p">][(</span><span class="n">week_index</span><span class="p">,</span> <span class="n">scenario_index</span><span class="p">)]</span> <span class="o">=</span> <span class="n">DCOPF</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">TOTAL_ENERGY_DEMAND</span><span class="o">.</span><span class="n">expr</span><span class="p">()</span>
             
-            
+
         <span class="c1"># Compute aggregate statistics for given week</span>
         <span class="c1"># -------------------------------------------</span>
         <span class="c1"># Net scheme revenue [$]</span>
         <span class="n">week_metrics</span><span class="p">[</span><span class="s1">&#39;net_scheme_revenue&#39;</span><span class="p">][</span><span class="n">week_index</span><span class="p">]</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">scenario_metrics</span><span class="p">[</span><span class="s1">&#39;net_scheme_revenue&#39;</span><span class="p">][(</span><span class="n">week_index</span><span class="p">,</span> <span class="n">s</span><span class="p">)]</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">DCOPF</span><span class="o">.</span><span class="n">df_scenarios</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">levels</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
         
+        <span class="c1"># Emissions intensities for regulated generators for the given week</span>
+        <span class="n">week_metrics</span><span class="p">[</span><span class="s1">&#39;regulated_generator_emissions_intensities&#39;</span><span class="p">][</span><span class="n">week_index</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="n">g</span><span class="p">:</span> <span class="n">DCOPF</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">E_HAT</span><span class="p">[</span><span class="n">g</span><span class="p">]</span><span class="o">.</span><span class="n">expr</span><span class="p">()</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">DCOPF</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">OMEGA_G</span><span class="p">}</span>
+
         <span class="c1"># Total emissions [tCO2]</span>
         <span class="n">week_metrics</span><span class="p">[</span><span class="s1">&#39;total_emissions_tCO2&#39;</span><span class="p">][</span><span class="n">week_index</span><span class="p">]</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">scenario_metrics</span><span class="p">[</span><span class="s1">&#39;total_emissions_tCO2&#39;</span><span class="p">][(</span><span class="n">week_index</span><span class="p">,</span> <span class="n">s</span><span class="p">)]</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">DCOPF</span><span class="o">.</span><span class="n">df_scenarios</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">levels</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+        
+        <span class="c1"># Weekly energy output for each generator</span>
+        <span class="n">week_metrics</span><span class="p">[</span><span class="s1">&#39;regulated_generator_energy_MWh&#39;</span><span class="p">][</span><span class="n">week_index</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="n">g</span><span class="p">:</span> <span class="nb">sum</span><span class="p">(</span><span class="n">scenario_metrics</span><span class="p">[</span><span class="s1">&#39;regulated_generator_energy_MWh&#39;</span><span class="p">][(</span><span class="n">week_index</span><span class="p">,</span> <span class="n">s</span><span class="p">)][</span><span class="n">g</span><span class="p">]</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">DCOPF</span><span class="o">.</span><span class="n">df_scenarios</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">levels</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">DCOPF</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">OMEGA_G</span><span class="p">}</span>
         
         <span class="c1"># Total output from generators subjected to emissions intensity policy [MWh]</span>
         <span class="n">week_metrics</span><span class="p">[</span><span class="s1">&#39;total_regulated_generator_energy_MWh&#39;</span><span class="p">][</span><span class="n">week_index</span><span class="p">]</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">scenario_metrics</span><span class="p">[</span><span class="s1">&#39;total_regulated_generator_energy_MWh&#39;</span><span class="p">][(</span><span class="n">week_index</span><span class="p">,</span> <span class="n">s</span><span class="p">)]</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">DCOPF</span><span class="o">.</span><span class="n">df_scenarios</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">levels</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
@@ -12684,34 +12773,7 @@ div#notebook {
         
         <span class="c1"># Average emissions intensity of whole system (including renewables) [tCO2/MWh]</span>
         <span class="n">week_metrics</span><span class="p">[</span><span class="s1">&#39;average_emissions_intensity_system&#39;</span><span class="p">][</span><span class="n">week_index</span><span class="p">]</span> <span class="o">=</span> <span class="n">week_metrics</span><span class="p">[</span><span class="s1">&#39;total_emissions_tCO2&#39;</span><span class="p">][</span><span class="n">week_index</span><span class="p">]</span> <span class="o">/</span> <span class="n">week_metrics</span><span class="p">[</span><span class="s1">&#39;total_demand_MWh&#39;</span><span class="p">][</span><span class="n">week_index</span><span class="p">]</span>            
-        
-        <span class="c1"># Update rolling scheme revenue</span>
-        <span class="n">rolling_scheme_revenue</span> <span class="o">+=</span> <span class="n">week_metrics</span><span class="p">[</span><span class="s1">&#39;net_scheme_revenue&#39;</span><span class="p">]</span>
-
-        <span class="c1"># Record rolling scheme revenue [$]</span>
-        <span class="n">week_metrics</span><span class="p">[</span><span class="s1">&#39;rolling_scheme_revenue&#39;</span><span class="p">][</span><span class="n">week_index</span><span class="p">]</span> <span class="o">=</span> <span class="n">rolling_scheme_revenue</span>
-        
-
-        <span class="c1"># Update baseline</span>
-        <span class="c1"># ---------------</span>
-        <span class="k">if</span> <span class="n">update_mode</span> <span class="o">==</span> <span class="s1">&#39;NO_UPDATE&#39;</span><span class="p">:</span>
-            <span class="c1"># No update to baseline (should be 0 tCO2/MWh)</span>
-            <span class="n">baseline</span> <span class="o">=</span> <span class="n">baseline</span>
-
-        <span class="k">elif</span> <span class="n">update_mode</span> <span class="o">==</span> <span class="s1">&#39;REVENUE_REBALANCE_UPDATE&#39;</span><span class="p">:</span>
-            <span class="c1"># Update baseline seeking to re-balance net scheme revenue every period</span>
-            <span class="n">baseline</span> <span class="o">+=</span> <span class="n">week_metrics</span><span class="p">[</span><span class="s1">&#39;average_emissions_intensity_regulated_generators&#39;</span><span class="p">]</span> <span class="o">-</span> <span class="p">((</span><span class="n">target_scheme_revenue</span> <span class="o">-</span> <span class="n">rolling_scheme_revenue</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">permit_price</span> <span class="o">*</span> <span class="n">week_metrics</span><span class="p">[</span><span class="s1">&#39;energy_MWh&#39;</span><span class="p">][</span><span class="n">week_index</span><span class="p">]))</span>
-            
-            <span class="c1"># Set baseline to 0 if updated value less than zero</span>
-            <span class="k">if</span> <span class="n">baseline</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
-                <span class="n">baseline</span> <span class="o">=</span> <span class="mi">0</span>
-        
-        <span class="k">elif</span> <span class="n">update_mode</span> <span class="o">==</span> <span class="s1">&#39;MPC_UPDATE&#39;</span><span class="p">:</span>
-            <span class="c1"># Update baseline using a Model Predictive Control paradigm. Goal is to minimise control </span>
-            <span class="c1"># action (movement of baseline) while achieving target scheme revenue 6 weeks in the future.</span>
-<span class="c1">#             baseline = baseline</span>
-            
-            
+                   
         <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;Completed week </span><span class="si">{week_index}</span><span class="s1"> in {time.time()-t0:.2f}s&#39;</span><span class="p">)</span>
 
         
@@ -12724,10 +12786,10 @@ div#notebook {
         <span class="n">pickle</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">scenario_power_output</span><span class="p">,</span> <span class="n">f</span><span class="p">)</span>
 
     <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;output/</span><span class="si">{run_id}</span><span class="s1">_scenario_metrics.pickle&#39;</span><span class="p">,</span> <span class="s1">&#39;wb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
-        <span class="n">pickle</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">scenario_results</span><span class="p">,</span> <span class="n">f</span><span class="p">)</span>
+        <span class="n">pickle</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">scenario_metrics</span><span class="p">,</span> <span class="n">f</span><span class="p">)</span>
         
     <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;output/</span><span class="si">{run_id}</span><span class="s1">_week_metrics.pickle&#39;</span><span class="p">,</span> <span class="s1">&#39;wb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
-        <span class="n">pickle</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">week_results</span><span class="p">,</span> <span class="n">f</span><span class="p">)</span>
+        <span class="n">pickle</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">week_metrics</span><span class="p">,</span> <span class="n">f</span><span class="p">)</span>
         
     <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;output/</span><span class="si">{run_id}</span><span class="s1">_run_summary.pickle&#39;</span><span class="p">,</span> <span class="s1">&#39;wb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
         <span class="n">pickle</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">run_summary</span><span class="p">,</span> <span class="n">f</span><span class="p">)</span>
@@ -12738,7 +12800,6 @@ div#notebook {
     <span class="k">if</span> <span class="n">shock_option</span> <span class="o">==</span> <span class="s1">&#39;EMISSIONS_INTENSITY_SHOCK&#39;</span><span class="p">:</span>
         <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;output/</span><span class="si">{run_id}</span><span class="s1">_emissions_intensity_shock_factor.pickle&#39;</span><span class="p">,</span> <span class="s1">&#39;wb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
             <span class="n">pickle</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">df_emissions_intensity_shock_factor</span><span class="p">,</span> <span class="n">f</span><span class="p">)</span>
-        
         
     <span class="k">return</span> <span class="n">run_id</span>
 </pre></div>
@@ -12759,13 +12820,1411 @@ div#notebook {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[&nbsp;]:</div>
+<div class="prompt input_prompt">In&nbsp;[56]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span> 
+<div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># # Business-as-usual case</span>
+<span class="c1"># run_model(data_dir=data_dir, scenarios_dir=scenarios_dir, shock_option=&#39;NO_SHOCKS&#39;, update_mode=&#39;NO_UPDATE&#39;, description=&#39;business as usual case&#39;, initial_permit_price=0, initial_baseline=0, initial_rolling_scheme_revenue=0)</span>
+
+<span class="c1"># # Carbon tax - no shocks</span>
+<span class="c1"># run_id_tax_no_shocks = run_model(data_dir=data_dir, scenarios_dir=scenarios_dir, shock_option=&#39;NO_SHOCKS&#39;, update_mode=&#39;NO_UPDATE&#39;, description=&#39;carbon tax - no shocks&#39;, initial_permit_price=40, initial_baseline=0, initial_rolling_scheme_revenue=0)</span>
+
+<span class="c1"># Carbon tax - with emissions intensity shock</span>
+<span class="n">run_id_tax_emissions_intensity_shock</span> <span class="o">=</span> <span class="n">run_model</span><span class="p">(</span><span class="n">data_dir</span><span class="o">=</span><span class="n">data_dir</span><span class="p">,</span> <span class="n">scenarios_dir</span><span class="o">=</span><span class="n">scenarios_dir</span><span class="p">,</span> <span class="n">shock_option</span><span class="o">=</span><span class="s1">&#39;EMISSIONS_INTENSITY_SHOCK&#39;</span><span class="p">,</span> <span class="n">update_mode</span><span class="o">=</span><span class="s1">&#39;NO_UPDATE&#39;</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s1">&#39;carbon tax - emissions intensity shock&#39;</span><span class="p">,</span> <span class="n">week_of_shock</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">initial_permit_price</span><span class="o">=</span><span class="mi">40</span><span class="p">,</span> <span class="n">initial_baseline</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">initial_rolling_scheme_revenue</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
 </pre></div>
 
 </div>
+</div>
+</div>
+
+<div class="output_wrapper">
+<div class="output">
+
+
+<div class="output_area">
+
+<div class="prompt"></div>
+
+
+<div class="output_subarea output_stream output_stdout output_text">
+<pre>Running model NO_UPDATE with run option EMISSIONS_INTENSITY_SHOCK
+Completed week 1 in 12.19s
+Completed week 2 in 12.38s
+Completed week 3 in 11.80s
+Completed week 4 in 11.99s
+Completed week 5 in 11.89s
+Completed week 6 in 12.10s
+Completed week 7 in 11.98s
+Completed week 8 in 11.97s
+Completed week 9 in 11.86s
+Completed week 10 in 11.95s
+Completed week 11 in 11.92s
+Completed week 12 in 11.78s
+Completed week 13 in 11.80s
+Completed week 14 in 11.85s
+Completed week 15 in 11.69s
+Completed week 16 in 12.08s
+Completed week 17 in 12.14s
+Completed week 18 in 12.02s
+Completed week 19 in 11.97s
+Completed week 20 in 11.83s
+Completed week 21 in 11.83s
+Completed week 22 in 12.00s
+Completed week 23 in 11.87s
+Completed week 24 in 12.71s
+Completed week 25 in 12.00s
+Completed week 26 in 12.09s
+Completed week 27 in 11.75s
+Completed week 28 in 11.89s
+Completed week 29 in 11.84s
+Completed week 30 in 12.08s
+Completed week 31 in 11.95s
+Completed week 32 in 11.99s
+Completed week 33 in 12.06s
+Completed week 34 in 12.05s
+Completed week 35 in 11.77s
+Completed week 36 in 11.72s
+Completed week 37 in 11.72s
+Completed week 38 in 11.84s
+Completed week 39 in 11.87s
+Completed week 40 in 11.92s
+Completed week 41 in 12.05s
+Completed week 42 in 12.02s
+Completed week 43 in 11.92s
+Completed week 44 in 11.95s
+Completed week 45 in 11.83s
+Completed week 46 in 12.01s
+Completed week 47 in 12.06s
+Completed week 48 in 12.20s
+Completed week 49 in 11.92s
+Completed week 50 in 12.44s
+Completed week 51 in 11.97s
+Completed week 52 in 11.87s
+</pre>
+</div>
+</div>
+
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[57]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="k">def</span> <span class="nf">get_all_run_summaries</span><span class="p">(</span><span class="n">results_dir</span><span class="p">):</span>
+    <span class="s2">&quot;Collate information summarising the parameters used in each run&quot;</span>
+    
+    <span class="c1"># Find all results summary files</span>
+    <span class="n">run_summary_files</span> <span class="o">=</span> <span class="p">[</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">listdir</span><span class="p">(</span><span class="n">results_dir</span><span class="p">)</span> <span class="k">if</span> <span class="s1">&#39;run_summary&#39;</span> <span class="ow">in</span> <span class="n">i</span><span class="p">]</span>
+
+    <span class="c1"># Container for dictionaries summarising model runs</span>
+    <span class="n">run_summaries</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">run_summary_files</span><span class="p">:</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">results_dir</span><span class="p">,</span> <span class="n">i</span><span class="p">),</span> <span class="s1">&#39;rb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">run_summary</span> <span class="o">=</span> <span class="n">pickle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+            <span class="n">run_summaries</span> <span class="o">=</span> <span class="p">{</span><span class="o">**</span><span class="n">run_summaries</span><span class="p">,</span> <span class="o">**</span><span class="n">run_summary</span><span class="p">}</span>
+            
+    <span class="k">return</span> <span class="n">run_summaries</span>
+
+<span class="c1"># Summary of parameters used for each run</span>
+<span class="n">results_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">curdir</span><span class="p">,</span> <span class="s1">&#39;output&#39;</span><span class="p">)</span>
+<span class="n">run_summaries</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">get_all_run_summaries</span><span class="p">(</span><span class="n">results_dir</span><span class="p">),</span> <span class="n">orient</span><span class="o">=</span><span class="s1">&#39;index&#39;</span><span class="p">)</span>
+<span class="n">run_summaries</span>
+</pre></div>
+
+</div>
+</div>
+</div>
+
+<div class="output_wrapper">
+<div class="output">
+
+
+<div class="output_area">
+
+<div class="prompt output_prompt">Out[57]:</div>
+
+
+
+<div class="output_html rendered_html output_subarea output_execute_result">
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>shock_option</th>
+      <th>update_mode</th>
+      <th>description</th>
+      <th>week_of_shock</th>
+      <th>target_scheme_revenue</th>
+      <th>initial_permit_price</th>
+      <th>initial_baseline</th>
+      <th>initial_rolling_scheme_revenue</th>
+      <th>seed</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>1AF70F76</th>
+      <td>EMISSIONS_INTENSITY_SHOCK</td>
+      <td>NO_UPDATE</td>
+      <td>carbon tax - emissions intensity shock</td>
+      <td>3</td>
+      <td>{}</td>
+      <td>40</td>
+      <td>0</td>
+      <td>0</td>
+      <td>10</td>
+    </tr>
+    <tr>
+      <th>1CF6431B</th>
+      <td>EMISSIONS_INTENSITY_SHOCK</td>
+      <td>REVENUE_REBALANCE_UPDATE</td>
+      <td>re-balance revenue every interval - unanticipa...</td>
+      <td>10</td>
+      <td>{1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: ...</td>
+      <td>40</td>
+      <td>1</td>
+      <td>0</td>
+      <td>10</td>
+    </tr>
+    <tr>
+      <th>46FFA87B</th>
+      <td>EMISSIONS_INTENSITY_SHOCK</td>
+      <td>REVENUE_REBALANCE_UPDATE</td>
+      <td>re-balance revenue every interval - anticipate...</td>
+      <td>10</td>
+      <td>{1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: ...</td>
+      <td>40</td>
+      <td>1</td>
+      <td>0</td>
+      <td>10</td>
+    </tr>
+    <tr>
+      <th>4D2E123B</th>
+      <td>NO_SHOCKS</td>
+      <td>NO_UPDATE</td>
+      <td>business as usual case</td>
+      <td>10</td>
+      <td>{}</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>10</td>
+    </tr>
+    <tr>
+      <th>6C0D3200</th>
+      <td>EMISSIONS_INTENSITY_SHOCK</td>
+      <td>NO_UPDATE</td>
+      <td>carbon tax - emissions intensity shock</td>
+      <td>10</td>
+      <td>{}</td>
+      <td>40</td>
+      <td>0</td>
+      <td>0</td>
+      <td>10</td>
+    </tr>
+    <tr>
+      <th>96648500</th>
+      <td>NO_SHOCKS</td>
+      <td>NO_UPDATE</td>
+      <td>carbon tax - no shocks</td>
+      <td>10</td>
+      <td>{}</td>
+      <td>40</td>
+      <td>0</td>
+      <td>0</td>
+      <td>10</td>
+    </tr>
+    <tr>
+      <th>A7CBD866</th>
+      <td>EMISSIONS_INTENSITY_SHOCK</td>
+      <td>MPC_UPDATE</td>
+      <td>re-balance revenue using MPC controller every ...</td>
+      <td>10</td>
+      <td>{1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: ...</td>
+      <td>40</td>
+      <td>1</td>
+      <td>0</td>
+      <td>10</td>
+    </tr>
+    <tr>
+      <th>A96BF5C0</th>
+      <td>NO_SHOCKS</td>
+      <td>MPC_UPDATE</td>
+      <td>re-balance revenue using MPC controller every ...</td>
+      <td>10</td>
+      <td>{1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: ...</td>
+      <td>40</td>
+      <td>1</td>
+      <td>0</td>
+      <td>10</td>
+    </tr>
+    <tr>
+      <th>E104729F</th>
+      <td>NO_SHOCKS</td>
+      <td>REVENUE_REBALANCE_UPDATE</td>
+      <td>re-balance revenue every interval</td>
+      <td>10</td>
+      <td>{1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: ...</td>
+      <td>40</td>
+      <td>1</td>
+      <td>0</td>
+      <td>10</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+</div>
+
+</div>
+
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[6]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># Construct forecast signals</span>
+<span class="c1"># --------------------------</span>
+<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;output/</span><span class="si">{run_id_tax_no_shocks}</span><span class="s1">_week_metrics.pickle&#39;</span><span class="p">,</span> <span class="s1">&#39;rb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+    <span class="n">week_metrics_no_shocks</span> <span class="o">=</span> <span class="n">pickle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+    
+<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;output/</span><span class="si">{run_id_tax_emissions_intensity_shock}</span><span class="s1">_week_metrics.pickle&#39;</span><span class="p">,</span> <span class="s1">&#39;rb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+    <span class="n">week_metrics_emissions_intensity_shock</span> <span class="o">=</span> <span class="n">pickle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+    
+
+<span class="n">model_horizon</span> <span class="o">=</span> <span class="mi">52</span>
+<span class="n">forecast_interval_length</span> <span class="o">=</span> <span class="mi">6</span>
+<span class="n">uncertainty_increment</span> <span class="o">=</span> <span class="mf">0.00</span>
+
+
+<span class="c1"># Week of shock</span>
+<span class="n">week_of_shock</span> <span class="o">=</span> <span class="n">run_summaries</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">run_id_tax_emissions_intensity_shock</span><span class="p">,</span> <span class="s1">&#39;week_of_shock&#39;</span><span class="p">]</span>
+
+<span class="c1"># Emissions intensities</span>
+<span class="n">perfect_forecast_no_shocks</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+<span class="n">generator_index</span> <span class="o">=</span> <span class="n">week_metrics_no_shocks</span><span class="p">[</span><span class="s1">&#39;regulated_generator_emissions_intensities&#39;</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+<span class="n">week_index</span> <span class="o">=</span> <span class="n">week_metrics_no_shocks</span><span class="p">[</span><span class="s1">&#39;average_emissions_intensity_regulated_generators&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+
+<span class="n">perfect_forecast_no_shocks</span><span class="p">[</span><span class="s1">&#39;regulated_generator_emissions_intensities&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">week_metrics_no_shocks</span><span class="p">[</span><span class="s1">&#39;regulated_generator_emissions_intensities&#39;</span><span class="p">]</span>
+<span class="n">perfect_forecast_no_shocks</span><span class="p">[</span><span class="s1">&#39;regulated_generator_energy_MWh&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">week_metrics_no_shocks</span><span class="p">[</span><span class="s1">&#39;regulated_generator_energy_MWh&#39;</span><span class="p">]</span>
+
+<span class="c1"># Perfect forecast when there is an emissions intensity shock</span>
+<span class="n">perfect_forecast_emissions_intensity_shock</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+<span class="n">perfect_forecast_emissions_intensity_shock</span><span class="p">[</span><span class="s1">&#39;regulated_generator_emissions_intensities&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">week_metrics_emissions_intensity_shock</span><span class="p">[</span><span class="s1">&#39;regulated_generator_emissions_intensities&#39;</span><span class="p">]</span>
+<span class="n">perfect_forecast_emissions_intensity_shock</span><span class="p">[</span><span class="s1">&#39;regulated_generator_energy_MWh&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">week_metrics_emissions_intensity_shock</span><span class="p">[</span><span class="s1">&#39;regulated_generator_energy_MWh&#39;</span><span class="p">]</span>
+
+
+<span class="c1"># Revenue re-balancing input</span>
+<span class="c1"># --------------------------</span>
+<span class="c1"># Scaling factor associated with energy output error for each generator for each week</span>
+<span class="n">generator_energy_output_error</span> <span class="o">=</span> <span class="p">{</span><span class="n">i</span><span class="p">:</span> <span class="p">{</span><span class="n">g</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mi">1</span><span class="o">-</span><span class="n">uncertainty_increment</span><span class="p">,</span> <span class="mi">1</span><span class="o">+</span><span class="n">uncertainty_increment</span><span class="p">)</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">generator_index</span><span class="p">}</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">week_index</span><span class="p">}</span>
+
+
+<span class="c1"># No shocks</span>
+<span class="c1"># ---------</span>
+<span class="c1"># Forecast for energy output (+/- 10% from realised value)</span>
+<span class="n">forecast_regulated_generator_energy_no_shocks</span> <span class="o">=</span> <span class="p">{</span><span class="n">i</span><span class="p">:</span> <span class="p">{</span><span class="n">g</span><span class="p">:</span> <span class="n">perfect_forecast_no_shocks</span><span class="p">[</span><span class="s1">&#39;regulated_generator_energy_MWh&#39;</span><span class="p">][</span><span class="n">i</span><span class="p">][</span><span class="n">g</span><span class="p">]</span> <span class="o">*</span> <span class="n">generator_energy_output_error</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="n">g</span><span class="p">]</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">generator_index</span><span class="p">}</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">week_index</span><span class="p">}</span>
+
+<span class="c1"># Forecast generator emissions intensities (perfect forecast)</span>
+<span class="n">forecast_regulated_generator_emissions_intensities_no_shocks</span> <span class="o">=</span> <span class="n">week_metrics_no_shocks</span><span class="p">[</span><span class="s1">&#39;regulated_generator_emissions_intensities&#39;</span><span class="p">]</span>
+
+
+<span class="c1"># Anticipated emissions intensity shock</span>
+<span class="c1"># -------------------------------------</span>
+<span class="c1"># Forecast for generator emissions intensities when there is an anticipated emissions intensity shock</span>
+<span class="n">forecast_regulated_generator_emissions_intensities_emissions_intensity_shock_anticipated</span> <span class="o">=</span> <span class="n">week_metrics_emissions_intensity_shock</span><span class="p">[</span><span class="s1">&#39;regulated_generator_emissions_intensities&#39;</span><span class="p">]</span>
+
+<span class="c1"># Forecast generator energy output when there is an anticipated emissions intensity shock</span>
+<span class="n">forecast_regulated_generator_energy_emissions_intensity_shock_anticipated</span> <span class="o">=</span> <span class="p">{</span><span class="n">i</span><span class="p">:</span> <span class="p">{</span><span class="n">g</span><span class="p">:</span> <span class="n">perfect_forecast_emissions_intensity_shock</span><span class="p">[</span><span class="s1">&#39;regulated_generator_energy_MWh&#39;</span><span class="p">][</span><span class="n">i</span><span class="p">][</span><span class="n">g</span><span class="p">]</span> <span class="o">*</span> <span class="n">generator_energy_output_error</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="n">g</span><span class="p">]</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">generator_index</span><span class="p">}</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">week_index</span><span class="p">}</span>
+
+
+<span class="c1"># Unanticipated emissions intensity shock</span>
+<span class="c1"># ---------------------------------------</span>
+<span class="c1"># Forecast generator energy output when there is an unanticipated emissions intensity shock</span>
+<span class="n">forecast_regulated_generator_energy_emissions_intensity_shock_unanticipated</span> <span class="o">=</span> <span class="p">{</span><span class="n">i</span><span class="p">:</span> <span class="p">{</span><span class="n">g</span><span class="p">:</span> <span class="n">forecast_regulated_generator_energy_no_shocks</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="n">g</span><span class="p">]</span> <span class="k">if</span> <span class="n">i</span> <span class="o">&lt;=</span> <span class="n">week_of_shock</span> <span class="k">else</span> <span class="n">forecast_regulated_generator_energy_emissions_intensity_shock_anticipated</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="n">g</span><span class="p">]</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">generator_index</span><span class="p">}</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">week_index</span><span class="p">}</span>
+
+<span class="c1"># Forecast for generator emissions intensities when there is an unanticipated emissions intensity shock</span>
+<span class="n">forecast_regulated_generator_emissions_intensities_emissions_intensity_shock_unanticipated</span> <span class="o">=</span> <span class="p">{</span><span class="n">i</span><span class="p">:</span> <span class="p">{</span><span class="n">g</span><span class="p">:</span> <span class="n">week_metrics_no_shocks</span><span class="p">[</span><span class="s1">&#39;regulated_generator_emissions_intensities&#39;</span><span class="p">][</span><span class="n">i</span><span class="p">][</span><span class="n">g</span><span class="p">]</span> <span class="k">if</span> <span class="n">i</span> <span class="o">&lt;=</span> <span class="n">week_of_shock</span> <span class="k">else</span> <span class="n">week_metrics_emissions_intensity_shock</span><span class="p">[</span><span class="s1">&#39;regulated_generator_emissions_intensities&#39;</span><span class="p">][</span><span class="n">i</span><span class="p">][</span><span class="n">g</span><span class="p">]</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">generator_index</span><span class="p">}</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">week_index</span><span class="p">}</span>
+
+
+<span class="c1"># Target scheme revenue</span>
+<span class="c1"># ---------------------</span>
+<span class="c1"># Revenue neutral policy pursued</span>
+<span class="n">target_scheme_revenue_neutral</span> <span class="o">=</span> <span class="p">{</span><span class="n">i</span><span class="p">:</span> <span class="mi">0</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">week_index</span><span class="p">}</span>
+</pre></div>
+
+</div>
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[7]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># Re-balance revenue rule - revenue neutral - no shocks</span>
+<span class="n">run_model</span><span class="p">(</span><span class="n">data_dir</span><span class="o">=</span><span class="n">data_dir</span><span class="p">,</span>
+          <span class="n">scenarios_dir</span><span class="o">=</span><span class="n">scenarios_dir</span><span class="p">,</span>
+          <span class="n">shock_option</span><span class="o">=</span><span class="s1">&#39;NO_SHOCKS&#39;</span><span class="p">,</span>
+          <span class="n">update_mode</span><span class="o">=</span><span class="s1">&#39;REVENUE_REBALANCE_UPDATE&#39;</span><span class="p">,</span>
+          <span class="n">description</span><span class="o">=</span><span class="s1">&#39;re-balance revenue every interval&#39;</span><span class="p">,</span>
+          <span class="n">forecast_generator_emissions_intensity</span><span class="o">=</span><span class="n">forecast_regulated_generator_emissions_intensities_no_shocks</span><span class="p">,</span>
+          <span class="n">forecast_generator_energy_output</span><span class="o">=</span><span class="n">forecast_regulated_generator_energy_no_shocks</span><span class="p">,</span>
+          <span class="n">week_of_shock</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+          <span class="n">initial_permit_price</span><span class="o">=</span><span class="mi">40</span><span class="p">,</span>
+          <span class="n">target_scheme_revenue</span><span class="o">=</span><span class="n">target_scheme_revenue_neutral</span><span class="p">,</span>
+          <span class="n">initial_baseline</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+          <span class="n">initial_rolling_scheme_revenue</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+          <span class="n">seed</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+</pre></div>
+
+</div>
+</div>
+</div>
+
+<div class="output_wrapper">
+<div class="output">
+
+
+<div class="output_area">
+
+<div class="prompt"></div>
+
+
+<div class="output_subarea output_stream output_stdout output_text">
+<pre>Running model REVENUE_REBALANCE_UPDATE with run option NO_SHOCKS
+Completed week 1 in 12.85s
+Completed week 2 in 12.55s
+Completed week 3 in 12.31s
+Completed week 4 in 12.26s
+Completed week 5 in 12.59s
+Completed week 6 in 12.75s
+Completed week 7 in 12.49s
+Completed week 8 in 12.65s
+Completed week 9 in 12.30s
+Completed week 10 in 12.63s
+Completed week 11 in 11.91s
+Completed week 12 in 12.55s
+Completed week 13 in 12.96s
+Completed week 14 in 13.34s
+Completed week 15 in 12.86s
+Completed week 16 in 13.05s
+Completed week 17 in 12.84s
+Completed week 18 in 13.24s
+Completed week 19 in 12.46s
+Completed week 20 in 12.84s
+Completed week 21 in 12.83s
+Completed week 22 in 12.22s
+Completed week 23 in 13.68s
+Completed week 24 in 13.01s
+Completed week 25 in 12.51s
+Completed week 26 in 12.66s
+Completed week 27 in 12.75s
+Completed week 28 in 12.98s
+Completed week 29 in 12.28s
+Completed week 30 in 12.67s
+Completed week 31 in 12.17s
+Completed week 32 in 12.52s
+Completed week 33 in 12.53s
+Completed week 34 in 12.29s
+Completed week 35 in 12.53s
+Completed week 36 in 12.25s
+Completed week 37 in 12.00s
+Completed week 38 in 12.54s
+Completed week 39 in 12.56s
+Completed week 40 in 12.61s
+Completed week 41 in 12.59s
+Completed week 42 in 13.27s
+Completed week 43 in 12.26s
+Completed week 44 in 11.85s
+Completed week 45 in 11.74s
+Completed week 46 in 11.77s
+Completed week 47 in 11.69s
+Completed week 48 in 11.74s
+Completed week 49 in 11.83s
+Completed week 50 in 11.58s
+Completed week 51 in 11.47s
+Completed week 52 in 11.56s
+</pre>
+</div>
+</div>
+
+<div class="output_area">
+
+<div class="prompt output_prompt">Out[7]:</div>
+
+
+
+
+<div class="output_text output_subarea output_execute_result">
+<pre>&#39;E104729F&#39;</pre>
+</div>
+
+</div>
+
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[8]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># Anticipated emissions intensity shock</span>
+<span class="n">run_model</span><span class="p">(</span><span class="n">data_dir</span><span class="o">=</span><span class="n">data_dir</span><span class="p">,</span>
+          <span class="n">scenarios_dir</span><span class="o">=</span><span class="n">scenarios_dir</span><span class="p">,</span>
+          <span class="n">shock_option</span><span class="o">=</span><span class="s1">&#39;EMISSIONS_INTENSITY_SHOCK&#39;</span><span class="p">,</span>
+          <span class="n">update_mode</span><span class="o">=</span><span class="s1">&#39;REVENUE_REBALANCE_UPDATE&#39;</span><span class="p">,</span>
+          <span class="n">description</span><span class="o">=</span><span class="s1">&#39;re-balance revenue every interval - anticipated emissions intensity schock&#39;</span><span class="p">,</span>
+          <span class="n">forecast_generator_emissions_intensity</span><span class="o">=</span><span class="n">forecast_regulated_generator_emissions_intensities_emissions_intensity_shock_anticipated</span><span class="p">,</span>
+          <span class="n">forecast_generator_energy_output</span><span class="o">=</span><span class="n">forecast_regulated_generator_energy_emissions_intensity_shock_anticipated</span><span class="p">,</span>
+          <span class="n">week_of_shock</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+          <span class="n">initial_permit_price</span><span class="o">=</span><span class="mi">40</span><span class="p">,</span>
+          <span class="n">target_scheme_revenue</span><span class="o">=</span><span class="n">target_scheme_revenue_neutral</span><span class="p">,</span>
+          <span class="n">initial_baseline</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+          <span class="n">initial_rolling_scheme_revenue</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+          <span class="n">seed</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+</pre></div>
+
+</div>
+</div>
+</div>
+
+<div class="output_wrapper">
+<div class="output">
+
+
+<div class="output_area">
+
+<div class="prompt"></div>
+
+
+<div class="output_subarea output_stream output_stdout output_text">
+<pre>Running model REVENUE_REBALANCE_UPDATE with run option EMISSIONS_INTENSITY_SHOCK
+Completed week 1 in 11.62s
+Completed week 2 in 11.61s
+Completed week 3 in 11.64s
+Completed week 4 in 11.47s
+Completed week 5 in 11.53s
+Completed week 6 in 11.70s
+Completed week 7 in 11.58s
+Completed week 8 in 11.77s
+Completed week 9 in 11.53s
+Completed week 10 in 11.50s
+Completed week 11 in 11.58s
+Completed week 12 in 11.52s
+Completed week 13 in 11.58s
+Completed week 14 in 11.64s
+Completed week 15 in 12.86s
+Completed week 16 in 12.89s
+Completed week 17 in 12.54s
+Completed week 18 in 11.41s
+Completed week 19 in 11.80s
+Completed week 20 in 11.58s
+Completed week 21 in 12.02s
+Completed week 22 in 12.87s
+Completed week 23 in 11.82s
+Completed week 24 in 11.79s
+Completed week 25 in 12.17s
+Completed week 26 in 11.77s
+Completed week 27 in 11.53s
+Completed week 28 in 11.64s
+Completed week 29 in 11.56s
+Completed week 30 in 12.18s
+Completed week 31 in 12.39s
+Completed week 32 in 11.72s
+Completed week 33 in 12.11s
+Completed week 34 in 12.06s
+Completed week 35 in 12.01s
+Completed week 36 in 11.85s
+Completed week 37 in 11.72s
+Completed week 38 in 11.72s
+Completed week 39 in 11.83s
+Completed week 40 in 11.75s
+Completed week 41 in 12.27s
+Completed week 42 in 11.92s
+Completed week 43 in 11.80s
+Completed week 44 in 11.83s
+Completed week 45 in 11.91s
+Completed week 46 in 11.80s
+Completed week 47 in 11.95s
+Completed week 48 in 11.82s
+Completed week 49 in 11.80s
+Completed week 50 in 11.78s
+Completed week 51 in 11.72s
+Completed week 52 in 11.81s
+</pre>
+</div>
+</div>
+
+<div class="output_area">
+
+<div class="prompt output_prompt">Out[8]:</div>
+
+
+
+
+<div class="output_text output_subarea output_execute_result">
+<pre>&#39;46FFA87B&#39;</pre>
+</div>
+
+</div>
+
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[9]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># Unanticipated emissions intensity shock</span>
+<span class="n">run_model</span><span class="p">(</span><span class="n">data_dir</span><span class="o">=</span><span class="n">data_dir</span><span class="p">,</span>
+          <span class="n">scenarios_dir</span><span class="o">=</span><span class="n">scenarios_dir</span><span class="p">,</span>
+          <span class="n">shock_option</span><span class="o">=</span><span class="s1">&#39;EMISSIONS_INTENSITY_SHOCK&#39;</span><span class="p">,</span>
+          <span class="n">update_mode</span><span class="o">=</span><span class="s1">&#39;REVENUE_REBALANCE_UPDATE&#39;</span><span class="p">,</span>
+          <span class="n">description</span><span class="o">=</span><span class="s1">&#39;re-balance revenue every interval - unanticipated emissions intensity schock&#39;</span><span class="p">,</span>
+          <span class="n">forecast_generator_emissions_intensity</span><span class="o">=</span><span class="n">forecast_regulated_generator_emissions_intensities_emissions_intensity_shock_unanticipated</span><span class="p">,</span>
+          <span class="n">forecast_generator_energy_output</span><span class="o">=</span><span class="n">forecast_regulated_generator_energy_emissions_intensity_shock_unanticipated</span><span class="p">,</span>
+          <span class="n">week_of_shock</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+          <span class="n">initial_permit_price</span><span class="o">=</span><span class="mi">40</span><span class="p">,</span>
+          <span class="n">target_scheme_revenue</span><span class="o">=</span><span class="n">target_scheme_revenue_neutral</span><span class="p">,</span>
+          <span class="n">initial_baseline</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+          <span class="n">initial_rolling_scheme_revenue</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+          <span class="n">seed</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+</pre></div>
+
+</div>
+</div>
+</div>
+
+<div class="output_wrapper">
+<div class="output">
+
+
+<div class="output_area">
+
+<div class="prompt"></div>
+
+
+<div class="output_subarea output_stream output_stdout output_text">
+<pre>Running model REVENUE_REBALANCE_UPDATE with run option EMISSIONS_INTENSITY_SHOCK
+Completed week 1 in 11.75s
+Completed week 2 in 11.78s
+Completed week 3 in 11.78s
+Completed week 4 in 11.61s
+Completed week 5 in 11.86s
+Completed week 6 in 12.03s
+Completed week 7 in 11.77s
+Completed week 8 in 11.84s
+Completed week 9 in 11.75s
+Completed week 10 in 12.03s
+Completed week 11 in 12.20s
+Completed week 12 in 12.02s
+Completed week 13 in 11.74s
+Completed week 14 in 11.64s
+Completed week 15 in 11.74s
+Completed week 16 in 11.76s
+Completed week 17 in 12.13s
+Completed week 18 in 11.98s
+Completed week 19 in 12.13s
+Completed week 20 in 12.27s
+Completed week 21 in 12.26s
+Completed week 22 in 12.79s
+Completed week 23 in 12.09s
+Completed week 24 in 11.81s
+Completed week 25 in 11.67s
+Completed week 26 in 11.75s
+Completed week 27 in 11.73s
+Completed week 28 in 11.83s
+Completed week 29 in 11.80s
+Completed week 30 in 11.90s
+Completed week 31 in 11.77s
+Completed week 32 in 11.92s
+Completed week 33 in 11.76s
+Completed week 34 in 11.77s
+Completed week 35 in 11.88s
+Completed week 36 in 11.80s
+Completed week 37 in 11.68s
+Completed week 38 in 11.69s
+Completed week 39 in 12.07s
+Completed week 40 in 11.81s
+Completed week 41 in 11.91s
+Completed week 42 in 12.14s
+Completed week 43 in 11.86s
+Completed week 44 in 12.05s
+Completed week 45 in 11.94s
+Completed week 46 in 11.81s
+Completed week 47 in 11.90s
+Completed week 48 in 11.64s
+Completed week 49 in 11.92s
+Completed week 50 in 11.97s
+Completed week 51 in 11.69s
+Completed week 52 in 11.84s
+</pre>
+</div>
+</div>
+
+<div class="output_area">
+
+<div class="prompt output_prompt">Out[9]:</div>
+
+
+
+
+<div class="output_text output_subarea output_execute_result">
+<pre>&#39;1CF6431B&#39;</pre>
+</div>
+
+</div>
+
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[10]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># MPC forecasts</span>
+<span class="n">model_horizon</span> <span class="o">=</span> <span class="mi">52</span>
+<span class="n">forecast_interval_length</span> <span class="o">=</span> <span class="mi">6</span>
+
+<span class="c1"># Perfect forecast when no shocks</span>
+<span class="n">perfect_forecast_energy_no_shocks</span> <span class="o">=</span> <span class="p">{</span><span class="n">i</span><span class="p">:</span> <span class="p">{</span><span class="n">j</span><span class="p">:</span> <span class="n">perfect_forecast_no_shocks</span><span class="p">[</span><span class="s1">&#39;regulated_generator_energy_MWh&#39;</span><span class="p">][</span><span class="n">i</span><span class="o">+</span><span class="n">j</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">forecast_interval_length</span><span class="o">+</span><span class="mi">1</span><span class="p">)}</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">model_horizon</span><span class="o">-</span><span class="n">forecast_interval_length</span><span class="o">+</span><span class="mi">2</span><span class="p">)}</span>
+<span class="n">perfect_forecast_emissions_intensity_no_shocks</span> <span class="o">=</span> <span class="p">{</span><span class="n">i</span><span class="p">:</span> <span class="p">{</span><span class="n">j</span><span class="p">:</span> <span class="n">perfect_forecast_no_shocks</span><span class="p">[</span><span class="s1">&#39;regulated_generator_emissions_intensities&#39;</span><span class="p">][</span><span class="n">i</span><span class="o">+</span><span class="n">j</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">forecast_interval_length</span><span class="o">+</span><span class="mi">1</span><span class="p">)}</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">model_horizon</span><span class="o">-</span><span class="n">forecast_interval_length</span><span class="o">+</span><span class="mi">2</span><span class="p">)}</span>
+
+<span class="c1"># Perfect forecast when emissions intensity shock</span>
+<span class="n">perfect_forecast_energy_emissions_intensity_shock</span> <span class="o">=</span> <span class="p">{</span><span class="n">i</span><span class="p">:</span> <span class="p">{</span><span class="n">j</span><span class="p">:</span> <span class="n">perfect_forecast_emissions_intensity_shock</span><span class="p">[</span><span class="s1">&#39;regulated_generator_energy_MWh&#39;</span><span class="p">][</span><span class="n">i</span><span class="o">+</span><span class="n">j</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">forecast_interval_length</span><span class="o">+</span><span class="mi">1</span><span class="p">)}</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">model_horizon</span><span class="o">-</span><span class="n">forecast_interval_length</span><span class="o">+</span><span class="mi">2</span><span class="p">)}</span>
+<span class="n">perfect_forecast_emissions_intensity_emissions_intensity_shock</span> <span class="o">=</span> <span class="p">{</span><span class="n">i</span><span class="p">:</span> <span class="p">{</span><span class="n">j</span><span class="p">:</span> <span class="n">perfect_forecast_emissions_intensity_shock</span><span class="p">[</span><span class="s1">&#39;regulated_generator_emissions_intensities&#39;</span><span class="p">][</span><span class="n">i</span><span class="o">+</span><span class="n">j</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">forecast_interval_length</span><span class="o">+</span><span class="mi">1</span><span class="p">)}</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">model_horizon</span><span class="o">-</span><span class="n">forecast_interval_length</span><span class="o">+</span><span class="mi">2</span><span class="p">)}</span>
+</pre></div>
+
+</div>
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[11]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># MPC controller - no shocks</span>
+<span class="n">run_model</span><span class="p">(</span><span class="n">data_dir</span><span class="o">=</span><span class="n">data_dir</span><span class="p">,</span>
+          <span class="n">scenarios_dir</span><span class="o">=</span><span class="n">scenarios_dir</span><span class="p">,</span>
+          <span class="n">shock_option</span><span class="o">=</span><span class="s1">&#39;NO_SHOCKS&#39;</span><span class="p">,</span>
+          <span class="n">update_mode</span><span class="o">=</span><span class="s1">&#39;MPC_UPDATE&#39;</span><span class="p">,</span>
+          <span class="n">description</span><span class="o">=</span><span class="s1">&#39;re-balance revenue using MPC controller every interval&#39;</span><span class="p">,</span>
+          <span class="n">forecast_generator_emissions_intensity</span><span class="o">=</span><span class="n">perfect_forecast_emissions_intensity_no_shocks</span><span class="p">,</span>
+          <span class="n">forecast_generator_energy_output</span><span class="o">=</span><span class="n">perfect_forecast_energy_no_shocks</span><span class="p">,</span>
+          <span class="n">week_of_shock</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+          <span class="n">initial_permit_price</span><span class="o">=</span><span class="mi">40</span><span class="p">,</span>
+          <span class="n">target_scheme_revenue</span><span class="o">=</span><span class="n">target_scheme_revenue_neutral</span><span class="p">,</span>
+          <span class="n">initial_baseline</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+          <span class="n">initial_rolling_scheme_revenue</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+          <span class="n">seed</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+</pre></div>
+
+</div>
+</div>
+</div>
+
+<div class="output_wrapper">
+<div class="output">
+
+
+<div class="output_area">
+
+<div class="prompt"></div>
+
+
+<div class="output_subarea output_stream output_stdout output_text">
+<pre>Running model MPC_UPDATE with run option NO_SHOCKS
+Completed week 1 in 11.89s
+Completed week 2 in 11.92s
+Completed week 3 in 11.95s
+Completed week 4 in 11.97s
+Completed week 5 in 12.03s
+Completed week 6 in 11.98s
+Completed week 7 in 12.00s
+Completed week 8 in 11.99s
+Completed week 9 in 11.91s
+Completed week 10 in 11.96s
+Completed week 11 in 11.99s
+Completed week 12 in 11.94s
+Completed week 13 in 12.11s
+Completed week 14 in 12.05s
+Completed week 15 in 11.95s
+Completed week 16 in 12.02s
+Completed week 17 in 13.41s
+Completed week 18 in 13.60s
+Completed week 19 in 12.60s
+Completed week 20 in 12.50s
+Completed week 21 in 12.09s
+Completed week 22 in 11.98s
+Completed week 23 in 12.15s
+Completed week 24 in 12.02s
+Completed week 25 in 12.45s
+Completed week 26 in 13.38s
+Completed week 27 in 12.64s
+Completed week 28 in 11.97s
+Completed week 29 in 11.83s
+Completed week 30 in 12.20s
+Completed week 31 in 11.91s
+Completed week 32 in 11.88s
+Completed week 33 in 12.02s
+Completed week 34 in 12.00s
+Completed week 35 in 12.06s
+Completed week 36 in 12.05s
+Completed week 37 in 12.02s
+Completed week 38 in 11.95s
+Completed week 39 in 12.11s
+Completed week 40 in 11.92s
+Completed week 41 in 12.15s
+Completed week 42 in 11.91s
+Completed week 43 in 11.91s
+Completed week 44 in 11.97s
+Completed week 45 in 11.98s
+Completed week 46 in 11.88s
+Completed week 47 in 11.95s
+Completed week 48 in 11.75s
+Completed week 49 in 11.72s
+Completed week 50 in 11.80s
+Completed week 51 in 11.75s
+Completed week 52 in 11.94s
+</pre>
+</div>
+</div>
+
+<div class="output_area">
+
+<div class="prompt output_prompt">Out[11]:</div>
+
+
+
+
+<div class="output_text output_subarea output_execute_result">
+<pre>&#39;A96BF5C0&#39;</pre>
+</div>
+
+</div>
+
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[12]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># MPC controller - emissions intensity shock</span>
+<span class="n">run_model</span><span class="p">(</span><span class="n">data_dir</span><span class="o">=</span><span class="n">data_dir</span><span class="p">,</span>
+          <span class="n">scenarios_dir</span><span class="o">=</span><span class="n">scenarios_dir</span><span class="p">,</span>
+          <span class="n">shock_option</span><span class="o">=</span><span class="s1">&#39;EMISSIONS_INTENSITY_SHOCK&#39;</span><span class="p">,</span>
+          <span class="n">update_mode</span><span class="o">=</span><span class="s1">&#39;MPC_UPDATE&#39;</span><span class="p">,</span>
+          <span class="n">description</span><span class="o">=</span><span class="s1">&#39;re-balance revenue using MPC controller every interval&#39;</span><span class="p">,</span>
+          <span class="n">forecast_generator_emissions_intensity</span><span class="o">=</span><span class="n">perfect_forecast_emissions_intensity_emissions_intensity_shock</span><span class="p">,</span>
+          <span class="n">forecast_generator_energy_output</span><span class="o">=</span><span class="n">perfect_forecast_energy_emissions_intensity_shock</span><span class="p">,</span>
+          <span class="n">week_of_shock</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+          <span class="n">initial_permit_price</span><span class="o">=</span><span class="mi">40</span><span class="p">,</span>
+          <span class="n">target_scheme_revenue</span><span class="o">=</span><span class="n">target_scheme_revenue_neutral</span><span class="p">,</span>
+          <span class="n">initial_baseline</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+          <span class="n">initial_rolling_scheme_revenue</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+          <span class="n">seed</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+</pre></div>
+
+</div>
+</div>
+</div>
+
+<div class="output_wrapper">
+<div class="output">
+
+
+<div class="output_area">
+
+<div class="prompt"></div>
+
+
+<div class="output_subarea output_stream output_stdout output_text">
+<pre>Running model MPC_UPDATE with run option EMISSIONS_INTENSITY_SHOCK
+Completed week 1 in 12.00s
+Completed week 2 in 12.18s
+Completed week 3 in 11.89s
+Completed week 4 in 11.96s
+Completed week 5 in 12.03s
+Completed week 6 in 12.00s
+Completed week 7 in 11.81s
+Completed week 8 in 12.00s
+Completed week 9 in 12.02s
+Completed week 10 in 11.85s
+Completed week 11 in 12.00s
+Completed week 12 in 12.07s
+Completed week 13 in 12.03s
+Completed week 14 in 11.97s
+Completed week 15 in 11.94s
+Completed week 16 in 12.12s
+Completed week 17 in 12.00s
+Completed week 18 in 11.89s
+Completed week 19 in 11.97s
+Completed week 20 in 11.97s
+Completed week 21 in 11.89s
+Completed week 22 in 12.16s
+Completed week 23 in 12.03s
+Completed week 24 in 11.92s
+Completed week 25 in 11.92s
+Completed week 26 in 11.86s
+Completed week 27 in 12.00s
+Completed week 28 in 11.97s
+Completed week 29 in 12.06s
+Completed week 30 in 11.91s
+Completed week 31 in 11.98s
+Completed week 32 in 12.09s
+Completed week 33 in 12.10s
+Completed week 34 in 11.83s
+Completed week 35 in 11.98s
+Completed week 36 in 11.89s
+Completed week 37 in 11.99s
+Completed week 38 in 12.02s
+Completed week 39 in 12.02s
+Completed week 40 in 11.77s
+Completed week 41 in 11.87s
+Completed week 42 in 11.90s
+Completed week 43 in 11.91s
+Completed week 44 in 12.10s
+Completed week 45 in 11.99s
+Completed week 46 in 12.03s
+Completed week 47 in 12.03s
+Completed week 48 in 11.75s
+Completed week 49 in 11.92s
+Completed week 50 in 11.77s
+Completed week 51 in 11.81s
+Completed week 52 in 11.81s
+</pre>
+</div>
+</div>
+
+<div class="output_area">
+
+<div class="prompt output_prompt">Out[12]:</div>
+
+
+
+
+<div class="output_text output_subarea output_execute_result">
+<pre>&#39;A7CBD866&#39;</pre>
+</div>
+
+</div>
+
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[83]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+
+<span class="n">run_id</span> <span class="o">=</span> <span class="s1">&#39;1CF6431B&#39;</span>
+<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;output/</span><span class="si">{run_id}</span><span class="s1">_week_metrics.pickle&#39;</span><span class="p">,</span> <span class="s1">&#39;rb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+    <span class="n">week_metrics</span> <span class="o">=</span> <span class="n">pickle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">clf</span><span class="p">()</span>
+<span class="n">fig</span><span class="p">,</span> <span class="n">ax1</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">()</span>
+<span class="n">ax2</span> <span class="o">=</span> <span class="n">ax1</span><span class="o">.</span><span class="n">twinx</span><span class="p">()</span>
+
+<span class="n">lns1</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">week_metrics</span><span class="p">)[</span><span class="s1">&#39;baseline&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">drawstyle</span><span class="o">=</span><span class="s1">&#39;steps-post&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;#0ea33d&#39;</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax1</span><span class="p">)</span>
+<span class="n">lns2</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">week_metrics</span><span class="p">)[</span><span class="s1">&#39;rolling_scheme_revenue&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">div</span><span class="p">(</span><span class="mf">1e6</span><span class="p">)</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">ax</span><span class="o">=</span><span class="n">ax2</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;#d31b1b&#39;</span><span class="p">)</span>
+<span class="n">lns3</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">week_metrics</span><span class="p">)[</span><span class="s1">&#39;average_emissions_intensity_regulated_generators&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">ax</span><span class="o">=</span><span class="n">ax1</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;#0d67a2&#39;</span><span class="p">)</span>
+<span class="n">ax1</span><span class="o">.</span><span class="n">minorticks_on</span><span class="p">()</span>
+<span class="n">ax1</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s1">&#39;Week&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
+<span class="n">ax1</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s1">&#39;Baseline (tCO$_</span><span class="si">{2}</span><span class="s1">$/MWh)&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
+<span class="n">ax2</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s1">&#39;Net Scheme Revenue ($10^</span><span class="si">{6}</span><span class="s1">$\$)&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
+<span class="n">ax2</span><span class="o">.</span><span class="n">minorticks_on</span><span class="p">()</span>
+
+<span class="n">width</span> <span class="o">=</span> <span class="mf">6.5</span>
+<span class="n">height</span> <span class="o">=</span> <span class="mf">6.5</span><span class="o">/</span><span class="mf">1.61</span>
+<span class="n">fig</span><span class="o">.</span><span class="n">set_size_inches</span><span class="p">(</span><span class="n">width</span><span class="p">,</span> <span class="n">height</span><span class="p">)</span>
+<span class="n">fname</span> <span class="o">=</span> <span class="s1">&#39;revenue_rebalance_no_shocks&#39;</span>
+
+<span class="n">ax1</span><span class="o">.</span><span class="n">legend</span><span class="p">([</span><span class="s1">&#39;baseline&#39;</span><span class="p">,</span> <span class="s1">&#39;emissions intensity&#39;</span><span class="p">],</span> <span class="n">loc</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
+<span class="n">ax2</span><span class="o">.</span><span class="n">legend</span><span class="p">([</span><span class="s1">&#39;revenue&#39;</span><span class="p">],</span> <span class="n">loc</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+<span class="c1"># ax2.set_ylim([-1, 1])</span>
+<span class="n">fig</span><span class="o">.</span><span class="n">subplots_adjust</span><span class="p">(</span><span class="n">left</span><span class="o">=</span><span class="mf">0.15</span><span class="p">,</span> <span class="n">bottom</span><span class="o">=</span><span class="mf">0.15</span><span class="p">,</span> <span class="n">right</span><span class="o">=</span><span class="mf">0.87</span><span class="p">,</span> <span class="n">top</span><span class="o">=</span><span class="mf">0.95</span><span class="p">)</span>
+<span class="c1"># fig.savefig(f&#39;output/{fname}.pdf&#39;)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+
+</div>
+</div>
+</div>
+
+<div class="output_wrapper">
+<div class="output">
+
+
+<div class="output_area">
+
+<div class="prompt"></div>
+
+
+
+
+<div class="output_text output_subarea ">
+<pre>&lt;matplotlib.figure.Figure at 0x1f90b2abef0&gt;</pre>
+</div>
+
+</div>
+
+<div class="output_area">
+
+<div class="prompt"></div>
+
+
+
+
+<div class="output_png output_subarea ">
+<img src="data:image/png;base64,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
+TkSuQmCC
+"
+>
+</div>
+
+</div>
+
 </div>
 </div>
 

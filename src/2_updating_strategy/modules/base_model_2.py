@@ -378,7 +378,7 @@ class DCOPFModel(OrganiseData):
         
         # Max power output
         def P_MAX_RULE(model, g):
-            return model.p[g] <= model.REGISTERED_CAPACITY[g] * model.GENERATION_SHOCK_FACTOR[g]
+            return model.p[g] <= model.REGISTERED_CAPACITY[g]
         model.P_MAX = Constraint(model.OMEGA_G, rule=P_MAX_RULE)
 
         # Reference angle
@@ -412,19 +412,22 @@ class DCOPFModel(OrganiseData):
         model.E_HAT = Expression(model.OMEGA_G, rule=E_HAT_RULE)
         
         # Total emissions [tCO2]
-        model.TOTAL_EMISSIONS = Expression(expr=sum(model.p[g] * model.E_HAT[g] * model.SCENARIO_DURATION for g in model.OMEGA_G))
+        model.TOTAL_EMISSIONS = Expression(expr=sum(model.p[g] * model.BASE_POWER * model.E_HAT[g] * model.SCENARIO_DURATION for g in model.OMEGA_G))
+        
+        # Total energy demand [MWh]
+        model.TOTAL_ENERGY_DEMAND = Expression(expr=sum(model.D[n] * model.BASE_POWER * model.SCENARIO_DURATION for n in model.OMEGA_N))
         
         # Total energy output from regulated generators [MWh]
-        model.TOTAL_REGULATED_GENERATOR_ENERGY = Expression(expr=sum(model.p[g] * model.SCENARIO_DURATION for g in model.OMEGA_G))
+        model.TOTAL_REGULATED_GENERATOR_ENERGY = Expression(expr=sum(model.p[g] * model.BASE_POWER * model.SCENARIO_DURATION for g in model.OMEGA_G))
         
         # Average emissions intensity of regulated generators [tCO2/MWh]
         model.AVERAGE_EMISSIONS_INTENSITY_REGULATED_GENERATORS = Expression(expr=model.TOTAL_EMISSIONS / model.TOTAL_REGULATED_GENERATOR_ENERGY)
         
         # Average emissions intensity of system [tCO2/MWh]
-        model.AVERAGE_EMISSIONS_INTENSITY_SYSTEM = Expression(expr=model.TOTAL_EMISSIONS / model.D)
+        model.AVERAGE_EMISSIONS_INTENSITY_SYSTEM = Expression(expr=model.TOTAL_EMISSIONS / model.TOTAL_ENERGY_DEMAND)
         
         # Net scheme revenue [$]
-        model.NET_SCHEME_REVENUE = Expression(expr=sum(model.E_HAT[g] - model.PHI) * model.p[g] * model.TAU * model.SCENARIO_DURATION for g in model.OMEGA_G)
+        model.NET_SCHEME_REVENUE = Expression(expr=sum((model.E_HAT[g] - model.PHI) * model.p[g] * model.BASE_POWER * model.SCENARIO_DURATION * model.TAU * model.BASE_POWER for g in model.OMEGA_G))
         
 
         # Objective
@@ -492,7 +495,7 @@ class DCOPFModel(OrganiseData):
         self.opt.solve(self.model)
 
 
-# In[ ]:
+# In[2]:
 
 
 from collections import OrderedDict
@@ -504,7 +507,7 @@ class MPCModel:
     
     def __init__(self, generator_index, forecast_interval_length):
         # Create model object
-        self.model = self.mpc_baseline_updater(generator_index, forecast_interval_length=forecast_interval_length)       
+        self.model = self.mpc_baseline(generator_index, forecast_interval_length=forecast_interval_length)       
                 
         # Define solver
         self.opt = SolverFactory('gurobi', solver_io='lp')
@@ -590,78 +593,78 @@ class MPCModel:
         return model
 
             
-        def update_model_parameter(self, forecast_generator_emissions_intensity, forecast_generator_energy_output, permit_price, initial_emissions_intensity_baseline, initial_rolling_scheme_revenue, target_rolling_scheme_revenue):
-            """Update parameters used as inputs for the MPC controller
-            
-            Parameters
-            ----------
-            forecast_generator_emissions_intensity : dict
-                Expected generator emissions intensities over forecast interval
+    def update_model_parameters(self, forecast_generator_emissions_intensity, forecast_generator_energy_output, permit_price, initial_emissions_intensity_baseline, initial_rolling_scheme_revenue, target_rolling_scheme_revenue):
+        """Update parameters used as inputs for the MPC controller
+
+        Parameters
+        ----------
+        forecast_generator_emissions_intensity : dict
+            Expected generator emissions intensities over forecast interval
+
+        forecast_generator_energy_output : dict
+            Forecast weekly energy output from generators over the forecast interval      
+
+        permit_price : float
+            Emissions price [tCO2/MWh]
+
+        initial_emissions_intensity_baseline : float
+            Emissions intensity baseline implemented for preceding week [tCO2/MWh]
+
+        initial_rolling_scheme_revenue : float
+            Rolling scheme revenue at end of preceding week [$]
+
+        target_rolling_scheme_revenue : float
+            Target scheme revenue to be obtained in the future [$]
+        """
+
+        # For each time interval in the forecast horizon
+        for t in self.model.OMEGA_T:
+            # For each generator
+            for g in self.model.OMEGA_G:
+                # Predicted generator emissions intensity for future periods
+                self.model.EMISSIONS_INTENSITY_FORECAST[g, t] = float(forecast_generator_emissions_intensity[t][g])
                 
-            forecast_generator_energy_output : dict
-                Forecast weekly energy output from generators over the forecast interval      
-                
-            permit_price : float
-                Emissions price [tCO2/MWh]
+                # Predicted weekly energy output
+                self.model.ENERGY_FORECAST[g, t] = float(forecast_generator_energy_output[t][g])
 
-            initial_emissions_intensity_baseline : float
-                Emissions intensity baseline implemented for preceding week [tCO2/MWh]
+        # Permit price
+        self.model.PERMIT_PRICE = float(permit_price)
 
-            initial_rolling_scheme_revenue : float
-                Rolling scheme revenue at end of preceding week [$]
+        # Emissions intensity baseline from previous period
+        self.model.INITIAL_EMISSIONS_INTENSITY_BASELINE = float(initial_emissions_intensity_baseline)
 
-            target_rolling_scheme_revenue : float
-                Target scheme revenue to be obtained in the future [$]
-            """
-            
-            # For each time interval in the forecast horizon
-            for t in self.model.OMEGA_T:
-                # For each generator
-                for g in self.model.OMEGA_G:
-                    # Predicted generator emissions intensity for future periods
-                    self.model.EMISSIONS_INTENSITY_FORECAST = float(forecast_generator_emissions_intensity[g][t])
+        # Initial rolling scheme revenue
+        self.model.INITIAL_ROLLING_SCHEME_REVENUE = float(initial_rolling_scheme_revenue)
 
-                    # Predicted weekly energy output
-                    self.model.ENERGY_FORECAST = float(forecast_generator_energy_output[g][t])
-
-            # Permit price
-            self.model.PERMIT_PRICE = float(permit_price)
-            
-            # Emissions intensity baseline from previous period
-            self.model.INITIAL_EMISSIONS_INTENSITY_BASELINE = float(initial_emissions_intensity_baseline)
-
-            # Initial rolling scheme revenue
-            self.model.INITIAL_ROLLING_SCHEME_REVENUE = float(initial_rolling_scheme_revenue)
-
-            # Rolling scheme revenue target at end of forecast horizon
-            self.model.TARGET_ROLLING_SCHEME_REVENUE = float(target_rolling_scheme_revenue)
+        # Rolling scheme revenue target at end of forecast horizon
+        self.model.TARGET_ROLLING_SCHEME_REVENUE = float(target_rolling_scheme_revenue)
             
 
-        def solve_model(self):
-            "Solve for optimal emissions intensity baseline path"
-            
-            self.opt.solve(self.model)
-                    
-                    
-        def get_optimal_baseline_path(self):
-            "Get optimal emissions intenstiy baseline path based on MPC controller"
-        
-            # Optimal emissions intensity baseline path as determined by MPC controller
-            optimal_baseline_path = OrderedDict(self.model.phi.get_values())
-            
-            return optimal_baseline_path
-            
-            
-        def get_next_baseline(self):
-            "Get next baseline to be implemented for the coming week"
-            
-            # Optimal path of baselines to be implemented over the finite horizon
-            optimal_baseline_path = self.get_optimal_baseline_path()
-            
-            # Next 'optimal' emissions intensity baseline to implement for the coming interval
-            next_baseline = float(optimal_baseline_path[self.model.OMEGA_T.first()])
+    def solve_model(self):
+        "Solve for optimal emissions intensity baseline path"
 
-            return next_baseline
+        self.opt.solve(self.model)
+
+
+    def get_optimal_baseline_path(self):
+        "Get optimal emissions intenstiy baseline path based on MPC controller"
+
+        # Optimal emissions intensity baseline path as determined by MPC controller
+        optimal_baseline_path = OrderedDict(self.model.phi.get_values())
+
+        return optimal_baseline_path
+
+
+    def get_next_baseline(self):
+        "Get next baseline to be implemented for the coming week"
+
+        # Optimal path of baselines to be implemented over the finite horizon
+        optimal_baseline_path = self.get_optimal_baseline_path()
+
+        # Next 'optimal' emissions intensity baseline to implement for the coming interval
+        next_baseline = float(optimal_baseline_path[self.model.OMEGA_T.first()])
+
+        return next_baseline
 
 
 # In[3]:
@@ -682,7 +685,7 @@ data_dir = os.path.join(os.path.curdir, os.path.pardir, os.path.pardir, os.path.
 scenarios_dir = os.path.join(os.path.curdir, os.path.pardir, os.path.pardir, '1_create_scenarios', 'output')  
 
 
-def run_model(data_dir, scenarios_dir, shock_option, update_mode, description, week_of_shock=10, initial_permit_price=40, initial_baseline=1, initial_rolling_scheme_revenue=0, seed=10):
+def run_model(data_dir, scenarios_dir, shock_option, update_mode, description, forecast_generator_emissions_intensity={}, forecast_generator_energy_output={}, week_of_shock=10, initial_permit_price=40, target_scheme_revenue={}, initial_baseline=1, initial_rolling_scheme_revenue=0, seed=10):
     """Run model with given parameters
 
     Parameters
@@ -710,12 +713,18 @@ def run_model(data_dir, scenarios_dir, shock_option, update_mode, description, w
     description : str
         Description of model / scenario being tested
     
+    forecast_generator_emissions_intensity : dict
+        Forecast generator emissions intensities for future periods
+        
+    forecast_generator_energy_output : dict
+        Forecast generator energy output for future periods
+    
     week_of_shock : int
         Index for week at which either generation or emissions intensities shocks will be implemented / begin.
         Default = 10.
 
-    target_scheme_revenue : float
-        Net scheme revenue target [$]. Default = $0.
+    target_scheme_revenue : dict
+        Net scheme revenue target defined for each period [$]. Default = $0 for all periods.
         
     initial_permit_price : float
         Initialised permit price value [$/tCO2]. Default = 40 $/tCO2.
@@ -752,7 +761,8 @@ def run_model(data_dir, scenarios_dir, shock_option, update_mode, description, w
     run_summary = {run_id: {'shock_option': shock_option, 
                             'update_mode': update_mode,
                             'description': description,
-                            'week_of_shock': week_of_shock, 
+                            'week_of_shock': week_of_shock,
+                            'target_scheme_revenue': target_scheme_revenue,
                             'initial_permit_price': initial_permit_price,
                             'initial_baseline': initial_baseline, 
                             'initial_rolling_scheme_revenue': initial_rolling_scheme_revenue, 
@@ -788,6 +798,7 @@ def run_model(data_dir, scenarios_dir, shock_option, update_mode, description, w
     # Results for each scenario
     scenario_metrics = {'net_scheme_revenue': dict(),
                         'total_emissions_tCO2': dict(),
+                        'regulated_generator_energy_MWh': dict(),
                         'total_regulated_generator_energy_MWh': dict(),
                         'total_demand_MWh': dict()
                        }
@@ -796,7 +807,9 @@ def run_model(data_dir, scenarios_dir, shock_option, update_mode, description, w
     week_metrics = {'baseline': dict(),
                     'net_scheme_revenue': dict(),
                     'rolling_scheme_revenue': dict(),
+                    'regulated_generator_emissions_intensities': dict(),
                     'total_emissions_tCO2': dict(),
+                    'regulated_generator_energy_MWh': dict(),
                     'total_regulated_generator_energy_MWh': dict(),
                     'total_demand_MWh': dict(),
                     'average_emissions_intensity_regulated_generators': dict(),
@@ -815,32 +828,99 @@ def run_model(data_dir, scenarios_dir, shock_option, update_mode, description, w
 
     # Run scenarios
     # -------------
+    weeks = DCOPF.df_scenarios.columns.levels[0]
     # For each week
-    for week_index in DCOPF.df_scenarios.columns.levels[0]:
+    for week_index in weeks:
         # Start clock to see how long it takes to solve all scenarios for each week
         t0 = time.time()
-
+        
         # Initialise policy parameters if the first week
-        if week_index == 1:
-            # Initialise emissions intensity baseline
-            baseline = initial_baseline
-            
+        if week_index == 1:            
             # Initialise permit price
             permit_price = initial_permit_price
             
             # Initialise rolling scheme revenue
             rolling_scheme_revenue = initial_rolling_scheme_revenue
+        
+        
+        # Update rolling scheme revenue (amount of money in bank account at start of calibration interval)
+        if week_index > 1:
+            rolling_scheme_revenue += week_metrics['net_scheme_revenue'][week_index-1]
+
+        # Record rolling scheme revenue at start of calibration interval [$]
+        week_metrics['rolling_scheme_revenue'][week_index] = rolling_scheme_revenue
+
+        
+        # Compute baseline
+        # ----------------
+        if update_mode == 'NO_UPDATE':
+            # No update to baseline (should be 0 tCO2/MWh)
+            baseline = initial_baseline
+
+        elif update_mode == 'REVENUE_REBALANCE_UPDATE':
+            # Forecast regulated generator emissions in next period
+            forecast_regulated_generator_total_emissions = sum(forecast_generator_emissions_intensity[week_index][g] * forecast_generator_energy_output[week_index][g] for g in DCOPF.model.OMEGA_G)
+
+            # Forecast regulated generator energy in next period
+            forecast_regulated_generator_total_energy = sum(forecast_generator_energy_output[week_index][g] for g in DCOPF.model.OMEGA_G)
+
+            # Forecast regulated generator average emissions intensity
+            forecast_regulated_generator_average_emissions_intensity = forecast_regulated_generator_total_emissions / forecast_regulated_generator_total_energy
+
+            # Update baseline seeking to re-balance net scheme revenue every period based on forecast output
+            baseline = forecast_regulated_generator_average_emissions_intensity - ((target_scheme_revenue[week_index] - rolling_scheme_revenue) / (permit_price * forecast_regulated_generator_total_energy))
+
+            # Set baseline to 0 if updated value less than zero
+            if baseline < 0:
+                baseline = 0
+        
+        elif update_mode == 'MPC_UPDATE':
+            # Update baseline using a Model Predictive Control paradigm. Goal is to minimise control 
+            # action (movement of baseline) while achieving target scheme revenue 6 weeks in the future.
             
+            # If first week, set previous baseline to expected emissions intensity for coming week
+            if week_index == 1:
+                baseline = 1.02
+                
+            if week_index <= weeks[-1] - forecast_interval_length + 1:
+                forecast_energy = forecast_generator_energy_output[week_index]
+                forecast_emissions_intensity = forecast_generator_emissions_intensity[week_index]
+            
+                # Update MPC controller parameters
+                MPC.update_model_parameters(forecast_generator_emissions_intensity=forecast_emissions_intensity,
+                                      forecast_generator_energy_output=forecast_energy,
+                                      permit_price=permit_price,
+                                      initial_emissions_intensity_baseline=baseline,
+                                      initial_rolling_scheme_revenue=rolling_scheme_revenue,
+                                      target_rolling_scheme_revenue=0)
+                # Solve model
+                MPC.solve_model()
+            
+                # Get next baseline to be implemented
+                baseline_path = MPC.get_optimal_baseline_path()
+            
+                # Baseline to be implemented
+                baseline = list(baseline_path.items())[0][1]
+            
+            else:
+                # Find index of baseline from optimal path previously calculated
+                baseline_path_index = week_index - (weeks[-1] - forecast_interval_length)
+                
+                # Baseline to be implemented
+                baseline = list(baseline_path.items())[baseline_path_index-1][1]
+                
         
         # Record baseline applying for the given week
         week_metrics['baseline'][week_index] = baseline
+        
+
 
         # Apply emissions intensity shock if shock option specified. Shock occurs once at week_index 
         # given by week_of_shock
         if (shock_option == 'EMISSIONS_INTENSITY_SHOCK') and (week_index == week_of_shock):
             # Loop through generators
             for g in DCOPF.model.OMEGA_G:
-                # Augement generator emissions intensity factor
+                # Augment generator emissions intensity factor
                 DCOPF.model.EMISSIONS_INTENSITY_SHOCK_FACTOR[g] = float(df_emissions_intensity_shock_factor.loc[g])
 
         # For each representative scenario approximating a week's operating state
@@ -872,20 +952,29 @@ def run_model(data_dir, scenarios_dir, shock_option, update_mode, description, w
             # Total emissions [tCO2]
             scenario_metrics['total_emissions_tCO2'][(week_index, scenario_index)] = DCOPF.model.TOTAL_EMISSIONS.expr()
             
+            # Generator energy output
+            scenario_metrics['regulated_generator_energy_MWh'][(week_index, scenario_index)] = {g: DCOPF.model.p[g].value * DCOPF.model.BASE_POWER.value * DCOPF.model.SCENARIO_DURATION.value for g in DCOPF.model.OMEGA_G}
+            
             # Total emissions from regulated generators [tCO2]
             scenario_metrics['total_regulated_generator_energy_MWh'][(week_index, scenario_index)] = DCOPF.model.TOTAL_REGULATED_GENERATOR_ENERGY.expr()
             
             # Total system energy demand [MWh]
-            scenario_metrics['total_demand_MWh'][(week_index, scenario_index)] = DCOPF.model.D.value
+            scenario_metrics['total_demand_MWh'][(week_index, scenario_index)] = DCOPF.model.TOTAL_ENERGY_DEMAND.expr()
             
-            
+
         # Compute aggregate statistics for given week
         # -------------------------------------------
         # Net scheme revenue [$]
         week_metrics['net_scheme_revenue'][week_index] = sum(scenario_metrics['net_scheme_revenue'][(week_index, s)] for s in DCOPF.df_scenarios.columns.levels[1])
         
+        # Emissions intensities for regulated generators for the given week
+        week_metrics['regulated_generator_emissions_intensities'][week_index] = {g: DCOPF.model.E_HAT[g].expr() for g in DCOPF.model.OMEGA_G}
+
         # Total emissions [tCO2]
         week_metrics['total_emissions_tCO2'][week_index] = sum(scenario_metrics['total_emissions_tCO2'][(week_index, s)] for s in DCOPF.df_scenarios.columns.levels[1])
+        
+        # Weekly energy output for each generator
+        week_metrics['regulated_generator_energy_MWh'][week_index] = {g: sum(scenario_metrics['regulated_generator_energy_MWh'][(week_index, s)][g] for s in DCOPF.df_scenarios.columns.levels[1]) for g in DCOPF.model.OMEGA_G}
         
         # Total output from generators subjected to emissions intensity policy [MWh]
         week_metrics['total_regulated_generator_energy_MWh'][week_index] = sum(scenario_metrics['total_regulated_generator_energy_MWh'][(week_index, s)] for s in DCOPF.df_scenarios.columns.levels[1])
@@ -898,34 +987,7 @@ def run_model(data_dir, scenarios_dir, shock_option, update_mode, description, w
         
         # Average emissions intensity of whole system (including renewables) [tCO2/MWh]
         week_metrics['average_emissions_intensity_system'][week_index] = week_metrics['total_emissions_tCO2'][week_index] / week_metrics['total_demand_MWh'][week_index]            
-        
-        # Update rolling scheme revenue
-        rolling_scheme_revenue += week_metrics['net_scheme_revenue']
-
-        # Record rolling scheme revenue [$]
-        week_metrics['rolling_scheme_revenue'][week_index] = rolling_scheme_revenue
-        
-
-        # Update baseline
-        # ---------------
-        if update_mode == 'NO_UPDATE':
-            # No update to baseline (should be 0 tCO2/MWh)
-            baseline = baseline
-
-        elif update_mode == 'REVENUE_REBALANCE_UPDATE':
-            # Update baseline seeking to re-balance net scheme revenue every period
-            baseline += week_metrics['average_emissions_intensity_regulated_generators'] - ((target_scheme_revenue - rolling_scheme_revenue) / (permit_price * week_metrics['energy_MWh'][week_index]))
-            
-            # Set baseline to 0 if updated value less than zero
-            if baseline < 0:
-                baseline = 0
-        
-        elif update_mode == 'MPC_UPDATE':
-            # Update baseline using a Model Predictive Control paradigm. Goal is to minimise control 
-            # action (movement of baseline) while achieving target scheme revenue 6 weeks in the future.
-#             baseline = baseline
-            
-            
+                   
         print(f'Completed week {week_index} in {time.time()-t0:.2f}s')
 
         
@@ -938,10 +1000,10 @@ def run_model(data_dir, scenarios_dir, shock_option, update_mode, description, w
         pickle.dump(scenario_power_output, f)
 
     with open(f'output/{run_id}_scenario_metrics.pickle', 'wb') as f:
-        pickle.dump(scenario_results, f)
+        pickle.dump(scenario_metrics, f)
         
     with open(f'output/{run_id}_week_metrics.pickle', 'wb') as f:
-        pickle.dump(week_results, f)
+        pickle.dump(week_metrics, f)
         
     with open(f'output/{run_id}_run_summary.pickle', 'wb') as f:
         pickle.dump(run_summary, f)
@@ -953,14 +1015,265 @@ def run_model(data_dir, scenarios_dir, shock_option, update_mode, description, w
         with open(f'output/{run_id}_emissions_intensity_shock_factor.pickle', 'wb') as f:
             pickle.dump(df_emissions_intensity_shock_factor, f)
         
-        
     return run_id
 
 
 # Run model with different scenarios
 
-# In[ ]:
+# In[56]:
 
 
+# # Business-as-usual case
+# run_model(data_dir=data_dir, scenarios_dir=scenarios_dir, shock_option='NO_SHOCKS', update_mode='NO_UPDATE', description='business as usual case', initial_permit_price=0, initial_baseline=0, initial_rolling_scheme_revenue=0)
 
+# # Carbon tax - no shocks
+# run_id_tax_no_shocks = run_model(data_dir=data_dir, scenarios_dir=scenarios_dir, shock_option='NO_SHOCKS', update_mode='NO_UPDATE', description='carbon tax - no shocks', initial_permit_price=40, initial_baseline=0, initial_rolling_scheme_revenue=0)
+
+# Carbon tax - with emissions intensity shock
+run_id_tax_emissions_intensity_shock = run_model(data_dir=data_dir, scenarios_dir=scenarios_dir, shock_option='EMISSIONS_INTENSITY_SHOCK', update_mode='NO_UPDATE', description='carbon tax - emissions intensity shock', week_of_shock=10, initial_permit_price=40, initial_baseline=0, initial_rolling_scheme_revenue=0, seed=10)
+
+
+# In[57]:
+
+
+def get_all_run_summaries(results_dir):
+    "Collate information summarising the parameters used in each run"
+    
+    # Find all results summary files
+    run_summary_files = [i for i in os.listdir(results_dir) if 'run_summary' in i]
+
+    # Container for dictionaries summarising model runs
+    run_summaries = dict()
+
+    for i in run_summary_files:
+        with open(os.path.join(results_dir, i), 'rb') as f:
+            run_summary = pickle.load(f)
+            run_summaries = {**run_summaries, **run_summary}
+            
+    return run_summaries
+
+# Summary of parameters used for each run
+results_dir = os.path.join(os.path.curdir, 'output')
+run_summaries = pd.DataFrame.from_dict(get_all_run_summaries(results_dir), orient='index')
+run_summaries
+
+
+# In[6]:
+
+
+# Construct forecast signals
+# --------------------------
+with open(f'output/{run_id_tax_no_shocks}_week_metrics.pickle', 'rb') as f:
+    week_metrics_no_shocks = pickle.load(f)
+    
+with open(f'output/{run_id_tax_emissions_intensity_shock}_week_metrics.pickle', 'rb') as f:
+    week_metrics_emissions_intensity_shock = pickle.load(f)
+    
+
+model_horizon = 52
+forecast_interval_length = 6
+uncertainty_increment = 0.00
+
+
+# Week of shock
+week_of_shock = run_summaries.loc[run_id_tax_emissions_intensity_shock, 'week_of_shock']
+
+# Emissions intensities
+perfect_forecast_no_shocks = dict()
+generator_index = week_metrics_no_shocks['regulated_generator_emissions_intensities'][1].keys()
+week_index = week_metrics_no_shocks['average_emissions_intensity_regulated_generators'].keys()
+
+perfect_forecast_no_shocks['regulated_generator_emissions_intensities'] = week_metrics_no_shocks['regulated_generator_emissions_intensities']
+perfect_forecast_no_shocks['regulated_generator_energy_MWh'] = week_metrics_no_shocks['regulated_generator_energy_MWh']
+
+# Perfect forecast when there is an emissions intensity shock
+perfect_forecast_emissions_intensity_shock = dict()
+perfect_forecast_emissions_intensity_shock['regulated_generator_emissions_intensities'] = week_metrics_emissions_intensity_shock['regulated_generator_emissions_intensities']
+perfect_forecast_emissions_intensity_shock['regulated_generator_energy_MWh'] = week_metrics_emissions_intensity_shock['regulated_generator_energy_MWh']
+
+
+# Revenue re-balancing input
+# --------------------------
+# Scaling factor associated with energy output error for each generator for each week
+generator_energy_output_error = {i: {g: np.random.uniform(1-uncertainty_increment, 1+uncertainty_increment) for g in generator_index} for i in week_index}
+
+
+# No shocks
+# ---------
+# Forecast for energy output (+/- 10% from realised value)
+forecast_regulated_generator_energy_no_shocks = {i: {g: perfect_forecast_no_shocks['regulated_generator_energy_MWh'][i][g] * generator_energy_output_error[i][g] for g in generator_index} for i in week_index}
+
+# Forecast generator emissions intensities (perfect forecast)
+forecast_regulated_generator_emissions_intensities_no_shocks = week_metrics_no_shocks['regulated_generator_emissions_intensities']
+
+
+# Anticipated emissions intensity shock
+# -------------------------------------
+# Forecast for generator emissions intensities when there is an anticipated emissions intensity shock
+forecast_regulated_generator_emissions_intensities_emissions_intensity_shock_anticipated = week_metrics_emissions_intensity_shock['regulated_generator_emissions_intensities']
+
+# Forecast generator energy output when there is an anticipated emissions intensity shock
+forecast_regulated_generator_energy_emissions_intensity_shock_anticipated = {i: {g: perfect_forecast_emissions_intensity_shock['regulated_generator_energy_MWh'][i][g] * generator_energy_output_error[i][g] for g in generator_index} for i in week_index}
+
+
+# Unanticipated emissions intensity shock
+# ---------------------------------------
+# Forecast generator energy output when there is an unanticipated emissions intensity shock
+forecast_regulated_generator_energy_emissions_intensity_shock_unanticipated = {i: {g: forecast_regulated_generator_energy_no_shocks[i][g] if i <= week_of_shock else forecast_regulated_generator_energy_emissions_intensity_shock_anticipated[i][g] for g in generator_index} for i in week_index}
+
+# Forecast for generator emissions intensities when there is an unanticipated emissions intensity shock
+forecast_regulated_generator_emissions_intensities_emissions_intensity_shock_unanticipated = {i: {g: week_metrics_no_shocks['regulated_generator_emissions_intensities'][i][g] if i <= week_of_shock else week_metrics_emissions_intensity_shock['regulated_generator_emissions_intensities'][i][g] for g in generator_index} for i in week_index}
+
+
+# Target scheme revenue
+# ---------------------
+# Revenue neutral policy pursued
+target_scheme_revenue_neutral = {i: 0 for i in week_index}
+
+
+# In[7]:
+
+
+# Re-balance revenue rule - revenue neutral - no shocks
+run_model(data_dir=data_dir,
+          scenarios_dir=scenarios_dir,
+          shock_option='NO_SHOCKS',
+          update_mode='REVENUE_REBALANCE_UPDATE',
+          description='re-balance revenue every interval',
+          forecast_generator_emissions_intensity=forecast_regulated_generator_emissions_intensities_no_shocks,
+          forecast_generator_energy_output=forecast_regulated_generator_energy_no_shocks,
+          week_of_shock=10,
+          initial_permit_price=40,
+          target_scheme_revenue=target_scheme_revenue_neutral,
+          initial_baseline=1,
+          initial_rolling_scheme_revenue=0,
+          seed=10)
+
+
+# In[8]:
+
+
+# Anticipated emissions intensity shock
+run_model(data_dir=data_dir,
+          scenarios_dir=scenarios_dir,
+          shock_option='EMISSIONS_INTENSITY_SHOCK',
+          update_mode='REVENUE_REBALANCE_UPDATE',
+          description='re-balance revenue every interval - anticipated emissions intensity schock',
+          forecast_generator_emissions_intensity=forecast_regulated_generator_emissions_intensities_emissions_intensity_shock_anticipated,
+          forecast_generator_energy_output=forecast_regulated_generator_energy_emissions_intensity_shock_anticipated,
+          week_of_shock=10,
+          initial_permit_price=40,
+          target_scheme_revenue=target_scheme_revenue_neutral,
+          initial_baseline=1,
+          initial_rolling_scheme_revenue=0,
+          seed=10)
+
+
+# In[9]:
+
+
+# Unanticipated emissions intensity shock
+run_model(data_dir=data_dir,
+          scenarios_dir=scenarios_dir,
+          shock_option='EMISSIONS_INTENSITY_SHOCK',
+          update_mode='REVENUE_REBALANCE_UPDATE',
+          description='re-balance revenue every interval - unanticipated emissions intensity schock',
+          forecast_generator_emissions_intensity=forecast_regulated_generator_emissions_intensities_emissions_intensity_shock_unanticipated,
+          forecast_generator_energy_output=forecast_regulated_generator_energy_emissions_intensity_shock_unanticipated,
+          week_of_shock=10,
+          initial_permit_price=40,
+          target_scheme_revenue=target_scheme_revenue_neutral,
+          initial_baseline=1,
+          initial_rolling_scheme_revenue=0,
+          seed=10)
+
+
+# In[10]:
+
+
+# MPC forecasts
+model_horizon = 52
+forecast_interval_length = 6
+
+# Perfect forecast when no shocks
+perfect_forecast_energy_no_shocks = {i: {j: perfect_forecast_no_shocks['regulated_generator_energy_MWh'][i+j-1] for j in range(1, forecast_interval_length+1)} for i in range(1, model_horizon-forecast_interval_length+2)}
+perfect_forecast_emissions_intensity_no_shocks = {i: {j: perfect_forecast_no_shocks['regulated_generator_emissions_intensities'][i+j-1] for j in range(1, forecast_interval_length+1)} for i in range(1, model_horizon-forecast_interval_length+2)}
+
+# Perfect forecast when emissions intensity shock
+perfect_forecast_energy_emissions_intensity_shock = {i: {j: perfect_forecast_emissions_intensity_shock['regulated_generator_energy_MWh'][i+j-1] for j in range(1, forecast_interval_length+1)} for i in range(1, model_horizon-forecast_interval_length+2)}
+perfect_forecast_emissions_intensity_emissions_intensity_shock = {i: {j: perfect_forecast_emissions_intensity_shock['regulated_generator_emissions_intensities'][i+j-1] for j in range(1, forecast_interval_length+1)} for i in range(1, model_horizon-forecast_interval_length+2)}
+
+
+# In[11]:
+
+
+# MPC controller - no shocks
+run_model(data_dir=data_dir,
+          scenarios_dir=scenarios_dir,
+          shock_option='NO_SHOCKS',
+          update_mode='MPC_UPDATE',
+          description='re-balance revenue using MPC controller every interval',
+          forecast_generator_emissions_intensity=perfect_forecast_emissions_intensity_no_shocks,
+          forecast_generator_energy_output=perfect_forecast_energy_no_shocks,
+          week_of_shock=10,
+          initial_permit_price=40,
+          target_scheme_revenue=target_scheme_revenue_neutral,
+          initial_baseline=1,
+          initial_rolling_scheme_revenue=0,
+          seed=10)
+
+
+# In[12]:
+
+
+# MPC controller - emissions intensity shock
+run_model(data_dir=data_dir,
+          scenarios_dir=scenarios_dir,
+          shock_option='EMISSIONS_INTENSITY_SHOCK',
+          update_mode='MPC_UPDATE',
+          description='re-balance revenue using MPC controller every interval',
+          forecast_generator_emissions_intensity=perfect_forecast_emissions_intensity_emissions_intensity_shock,
+          forecast_generator_energy_output=perfect_forecast_energy_emissions_intensity_shock,
+          week_of_shock=10,
+          initial_permit_price=40,
+          target_scheme_revenue=target_scheme_revenue_neutral,
+          initial_baseline=1,
+          initial_rolling_scheme_revenue=0,
+          seed=10)
+
+
+# In[83]:
+
+
+import matplotlib.pyplot as plt
+
+run_id = '1CF6431B'
+with open(f'output/{run_id}_week_metrics.pickle', 'rb') as f:
+    week_metrics = pickle.load(f)
+
+plt.clf()
+fig, ax1 = plt.subplots()
+ax2 = ax1.twinx()
+
+lns1 = pd.DataFrame.from_dict(week_metrics)['baseline'].plot(drawstyle='steps-post', color='#0ea33d', ax=ax1)
+lns2 = pd.DataFrame.from_dict(week_metrics)['rolling_scheme_revenue'].div(1e6).plot(ax=ax2, color='#d31b1b')
+lns3 = pd.DataFrame.from_dict(week_metrics)['average_emissions_intensity_regulated_generators'].plot(ax=ax1, color='#0d67a2')
+ax1.minorticks_on()
+ax1.set_xlabel('Week', fontsize=12)
+ax1.set_ylabel('Baseline (tCO$_{2}$/MWh)', fontsize=12)
+ax2.set_ylabel('Net Scheme Revenue ($10^{6}$\$)', fontsize=12)
+ax2.minorticks_on()
+
+width = 6.5
+height = 6.5/1.61
+fig.set_size_inches(width, height)
+fname = 'revenue_rebalance_no_shocks'
+
+ax1.legend(['baseline', 'emissions intensity'], loc=4)
+ax2.legend(['revenue'], loc=2)
+# ax2.set_ylim([-1, 1])
+fig.subplots_adjust(left=0.15, bottom=0.15, right=0.87, top=0.95)
+# fig.savefig(f'output/{fname}.pdf')
+
+plt.show()
 
