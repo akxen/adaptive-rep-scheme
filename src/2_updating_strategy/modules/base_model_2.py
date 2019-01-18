@@ -425,19 +425,19 @@ class DCOPFModel(OrganiseData):
         model.TOTAL_ENERGY_DEMAND = Expression(expr=sum(model.D[n] * model.BASE_POWER * model.SCENARIO_DURATION for n in model.OMEGA_N))
 
         # Total energy output from regulated generators [MWh]
-        model.TOTAL_REGULATED_GENERATOR_ENERGY = Expression(expr=sum(model.p[g] * model.BASE_POWER * model.SCENARIO_DURATION for g in model.OMEGA_G))
+        model.TOTAL_DISPATCHABLE_GENERATOR_ENERGY = Expression(expr=sum(model.p[g] * model.BASE_POWER * model.SCENARIO_DURATION for g in model.OMEGA_G))
         
         # Total energy from intermittent generators [MWh]
         model.TOTAL_INTERMITTENT_ENERGY = Expression(expr=sum(model.INTERMITTENT[n] * model.BASE_POWER * model.SCENARIO_DURATION for n in model.OMEGA_N))
         
         # Average emissions intensity of regulated generators [tCO2/MWh]
-        model.AVERAGE_EMISSIONS_INTENSITY_REGULATED_GENERATORS = Expression(expr=model.TOTAL_EMISSIONS / model.TOTAL_REGULATED_GENERATOR_ENERGY)
+        model.AVERAGE_EMISSIONS_INTENSITY_DISPATCHABLE_GENERATORS = Expression(expr=model.TOTAL_EMISSIONS / model.TOTAL_DISPATCHABLE_GENERATOR_ENERGY)
         
         # Average emissions intensity of system [tCO2/MWh]
         model.AVERAGE_EMISSIONS_INTENSITY_SYSTEM = Expression(expr=model.TOTAL_EMISSIONS / model.TOTAL_ENERGY_DEMAND)
         
-        # Net scheme revenue from regulated 'fossil' generators[$]
-        model.NET_SCHEME_REVENUE_REGULATED_GENERATORS = Expression(expr=sum((model.E_HAT[g] - model.PHI) * model.p[g] * model.BASE_POWER * model.SCENARIO_DURATION * model.TAU * model.BASE_POWER for g in model.OMEGA_G))
+        # Net scheme revenue from dispatchable 'fossil' generators[$]
+        model.NET_SCHEME_REVENUE_DISPATCHABLE_GENERATORS = Expression(expr=sum((model.E_HAT[g] - model.PHI) * model.p[g] * model.BASE_POWER * model.SCENARIO_DURATION * model.TAU * model.BASE_POWER for g in model.OMEGA_G))
         
         # Net scheme revenue that would need to be paid to intermittent renewables if included in scheme [$]
         model.NET_SCHEME_REVENUE_INTERMITTENT_GENERATORS = Expression(expr= - model.PHI * model.TOTAL_INTERMITTENT_ENERGY * model.TAU * model.BASE_POWER)
@@ -584,7 +584,7 @@ class MPCModel:
         model.TARGET_ROLLING_SCHEME_REVENUE = Param(initialize=0, mutable=True)
         
         # Indicator denoting whether energy from intermittent renewables is eligible for scheme payments
-        model.INTERMITTENT_GENERATORS_REGULATED_INDICATOR = Param(initialize=0, mutable=True)
+        model.INTERMITTENT_GENERATORS_REGULATED_INDICATOR = Param(model.OMEGA_T, initialize=0, mutable=True)
 
 
         # Variables
@@ -598,7 +598,7 @@ class MPCModel:
         # Scheme revenue must be at target by end of model horizon
         model.SCHEME_REVENUE = Constraint(expr=model.INITIAL_ROLLING_SCHEME_REVENUE 
                                           + sum((model.EMISSIONS_INTENSITY_FORECAST[g, t] - model.phi[t]) * model.ENERGY_FORECAST[g, t] * model.PERMIT_PRICE for g in model.OMEGA_G for t in model.OMEGA_T) 
-                                          + sum(model.INTERMITTENT_GENERATORS_REGULATED_INDICATOR[t] * model.INTERMITTENT_ENERGY_FORECAST[t] * model.PERMIT_PRICE for t in model.OMEGA_T)
+                                          - sum(model.INTERMITTENT_GENERATORS_REGULATED_INDICATOR[t] * model.phi[t] * model.INTERMITTENT_ENERGY_FORECAST[t] * model.PERMIT_PRICE for t in model.OMEGA_T)
                                           == model.TARGET_ROLLING_SCHEME_REVENUE)
 
         # Baseline must be non-negative
@@ -625,7 +625,7 @@ class MPCModel:
             Expected generator emissions intensities over forecast interval
 
         forecast_generator_energy : dict
-            Forecast weekly energy output from generators over the forecast interval      
+            Forecast weekly energy output from dispatchable generators over the forecast interval      
             
         forecast_intermittent_energy : dict
             Forecast weekly intermittent energy output from generators over the forecast interval
@@ -796,7 +796,7 @@ def run_model(data_dir, scenarios_dir, shock_option, update_mode, description,
         Initialised rolling scheme revenue value [$]. Default = $0.
 
     target_scheme_revenue : dict
-        Net scheme revenue target defined for each period [$]. Default = $0 for all periods.
+        Net scheme revenue target defined for each period [$].
         
     seed : int
         Seed used for random number generator. Allows shocks to be reproduced. Default = 10.
@@ -873,11 +873,11 @@ def run_model(data_dir, scenarios_dir, shock_option, update_mode, description,
     scenario_power_output = dict()
 
     # Results for each scenario
-    scenario_metrics = {'net_scheme_revenue_regulated_generators': dict(),
+    scenario_metrics = {'net_scheme_revenue_dispatchable_generators': dict(),
                         'net_scheme_revenue_intermittent_generators': dict(),
                         'total_emissions_tCO2': dict(),
-                        'regulated_generator_energy_MWh': dict(),
-                        'total_regulated_generator_energy_MWh': dict(),
+                        'dispatchable_generator_energy_MWh': dict(),
+                        'total_dispatchable_generator_energy_MWh': dict(),
                         'total_intermittent_energy_MWh': dict(),
                         'total_demand_MWh': dict(),
                         'energy_revenue': dict(),
@@ -885,15 +885,15 @@ def run_model(data_dir, scenarios_dir, shock_option, update_mode, description,
     
     # Aggregated results for each week
     week_metrics = {'baseline': dict(),
-                    'net_scheme_revenue_regulated_generators': dict(),
+                    'net_scheme_revenue_dispatchable_generators': dict(),
                     'net_scheme_revenue_intermittent_generators': dict(),
                     'net_scheme_revenue': dict(),
                     'rolling_scheme_revenue_interval_start': dict(),
                     'rolling_scheme_revenue_interval_end': dict(),
-                    'regulated_generator_emissions_intensities': dict(),
+                    'dispatchable_generator_emissions_intensities': dict(),
                     'total_emissions_tCO2': dict(),
-                    'regulated_generator_energy_MWh': dict(),
-                    'total_regulated_generator_energy_MWh': dict(),
+                    'dispatchable_generator_energy_MWh': dict(),
+                    'total_dispatchable_generator_energy_MWh': dict(),
                     'total_intermittent_energy_MWh': dict(),
                     'total_demand_MWh': dict(),
                     'average_emissions_intensity_regulated_generators': dict(),
@@ -944,6 +944,9 @@ def run_model(data_dir, scenarios_dir, shock_option, update_mode, description,
         if update_mode == 'NO_UPDATE':
             # No update to baseline (should be 0 tCO2/MWh)
             baseline = default_baseline
+            
+            # Assume renewables not included
+            renewables_included_this_week = False
 
         elif update_mode == 'REVENUE_REBALANCE_UPDATE':
             # Forecast regulated generator emissions in next period
@@ -957,7 +960,17 @@ def run_model(data_dir, scenarios_dir, shock_option, update_mode, description,
             
             # Forecast regulated generator energy in next period. Value may change depending on whether or not
             # intermittent generators are subject to the scheme's remit.
-            if intermittent_generators_regulated and intermittent_generators_regulated[week_index]:
+            
+            # Indicates if renewables are eligible for payments (default=False)
+            if intermittent_generators_regulated:
+                renewables_included_this_week = intermittent_generators_regulated[week_index][1]
+            else:
+                renewables_included_this_week = False
+            
+            if renewables_included_this_week:
+                # Set indicator to true if renewables are included under scheme for the coming week
+                renewables_included_this_week = True
+                
                 # Intermittent generators are part of scheme's remit, and receive payments
                 forecast_regulated_generator_total_energy = forecast_fossil_generator_total_energy + forecast_intermittent_generator_total_energy
             else:
@@ -968,7 +981,7 @@ def run_model(data_dir, scenarios_dir, shock_option, update_mode, description,
             forecast_regulated_generator_average_emissions_intensity = forecast_regulated_generator_total_emissions / forecast_regulated_generator_total_energy
 
             # Update baseline seeking to re-balance net scheme revenue every period based on forecast output
-            baseline = forecast_regulated_generator_average_emissions_intensity - ((target_scheme_revenue[week_index] - rolling_scheme_revenue_interval_start) / (permit_price * forecast_regulated_generator_total_energy))
+            baseline = forecast_regulated_generator_average_emissions_intensity - ((target_scheme_revenue[week_index][1] - rolling_scheme_revenue_interval_start) / (permit_price * forecast_regulated_generator_total_energy))
 
             # Set baseline to 0 if updated value less than zero
             if baseline < 0:
@@ -995,15 +1008,19 @@ def run_model(data_dir, scenarios_dir, shock_option, update_mode, description,
                 # Expected energy output from renewables over forecast interval
                 forecast_intermittent_energy = forecast_intermittent_generator_energy[week_index]
                 
+                # Intermittent generators included this week
+                renewables_included_this_week = intermittent_generators_regulated[week_index][1]
                                             
                 # Update MPC controller parameters
                 MPC.update_model_parameters(forecast_generator_emissions_intensity=forecast_emissions_intensity,
                                             forecast_generator_energy=forecast_energy,
-                                            forecast_intermittent_generator_energy=forecast_intermittent_energy,
+                                            forecast_intermittent_energy=forecast_intermittent_energy,
+                                            intermittent_generators_regulated=intermittent_generators_regulated[week_index],
                                             permit_price=permit_price,
                                             initial_emissions_intensity_baseline=baseline,
                                             initial_rolling_scheme_revenue=rolling_scheme_revenue_interval_start,
-                                            target_rolling_scheme_revenue=target_scheme_revenue[week_index])
+                                            target_rolling_scheme_revenue=target_scheme_revenue[week_index][forecast_interval_mpc])
+                
                                 
                 # Solve model
                 MPC.solve_model()
@@ -1012,14 +1029,17 @@ def run_model(data_dir, scenarios_dir, shock_option, update_mode, description,
                 baseline_path = MPC.get_optimal_baseline_path()
             
                 # Baseline to be implemented next
-                baseline = list(baseline_path.items())[0][1]
+                baseline = baseline_path[1]
             
             else:
-                # Find index of baseline from optimal path previously calculated
-                baseline_path_index = week_index - (weeks[-1] - forecast_interval_mpc)
+                # Find index of corresponding to baseline / indicator when at end of model horizon
+                path_index = week_index - (weeks[-1] - forecast_interval_mpc)
                 
                 # Baseline to be implemented
-                baseline = list(baseline_path.items())[baseline_path_index-1][1]
+                baseline = baseline_path[path_index]
+                
+                # Indicates if renewables receive payments this week
+                renewables_included_this_week = intermittent_generators_regulated[weeks[-1] - forecast_interval_mpc + 1][path_index]
                 
         # Record baseline applying for the given week
         week_metrics['baseline'][week_index] = baseline
@@ -1056,7 +1076,7 @@ def run_model(data_dir, scenarios_dir, shock_option, update_mode, description,
             # Store scenario metrics
             # ----------------------
             # Net scheme revenue from regulated 'fossil' generators for each scenario [$]
-            scenario_metrics['net_scheme_revenue_regulated_generators'][(week_index, scenario_index)] = DCOPF.model.NET_SCHEME_REVENUE_REGULATED_GENERATORS.expr()
+            scenario_metrics['net_scheme_revenue_dispatchable_generators'][(week_index, scenario_index)] = DCOPF.model.NET_SCHEME_REVENUE_DISPATCHABLE_GENERATORS.expr()
             
             # Net scheme revenue that would need to be paid to intermittent renewables if included in scheme [$]
             scenario_metrics['net_scheme_revenue_intermittent_generators'][(week_index, scenario_index)] = DCOPF.model.NET_SCHEME_REVENUE_INTERMITTENT_GENERATORS.expr()
@@ -1065,10 +1085,10 @@ def run_model(data_dir, scenarios_dir, shock_option, update_mode, description,
             scenario_metrics['total_emissions_tCO2'][(week_index, scenario_index)] = DCOPF.model.TOTAL_EMISSIONS.expr()
             
             # Generator energy output
-            scenario_metrics['regulated_generator_energy_MWh'][(week_index, scenario_index)] = {g: DCOPF.model.p[g].value * DCOPF.model.BASE_POWER.value * DCOPF.model.SCENARIO_DURATION.value for g in DCOPF.model.OMEGA_G}
+            scenario_metrics['dispatchable_generator_energy_MWh'][(week_index, scenario_index)] = {g: DCOPF.model.p[g].value * DCOPF.model.BASE_POWER.value * DCOPF.model.SCENARIO_DURATION.value for g in DCOPF.model.OMEGA_G}
             
-            # Total emissions from regulated generators [tCO2]
-            scenario_metrics['total_regulated_generator_energy_MWh'][(week_index, scenario_index)] = DCOPF.model.TOTAL_REGULATED_GENERATOR_ENERGY.expr()
+            # Total emissions from dispatchable generators [tCO2]
+            scenario_metrics['total_dispatchable_generator_energy_MWh'][(week_index, scenario_index)] = DCOPF.model.TOTAL_DISPATCHABLE_GENERATOR_ENERGY.expr()
             
             # Total energy from intermittent generators [MWh]
             scenario_metrics['total_intermittent_energy_MWh'][(week_index, scenario_index)] = DCOPF.model.TOTAL_INTERMITTENT_ENERGY.expr()
@@ -1084,28 +1104,22 @@ def run_model(data_dir, scenarios_dir, shock_option, update_mode, description,
         # Compute aggregate statistics for given week
         # -------------------------------------------
         # Net scheme revenue from regulated 'fossil' generators for each week [$]
-        week_metrics['net_scheme_revenue_regulated_generators'][week_index] = sum(scenario_metrics['net_scheme_revenue_regulated_generators'][(week_index, s)] for s in DCOPF.df_scenarios.columns.levels[1])
+        week_metrics['net_scheme_revenue_dispatchable_generators'][week_index] = sum(scenario_metrics['net_scheme_revenue_dispatchable_generators'][(week_index, s)] for s in DCOPF.df_scenarios.columns.levels[1])
         
         # Net scheme revenue that would need to be paid to intermittent renewables each week if included in scheme [$]
         week_metrics['net_scheme_revenue_intermittent_generators'][week_index] = sum(scenario_metrics['net_scheme_revenue_intermittent_generators'][(week_index, s)] for s in DCOPF.df_scenarios.columns.levels[1])
-        
-        # Net scheme revenue depending on inclusion of intermittent renewables in schemes [$]
-        if intermittent_generators_regulated and intermittent_generators_regulated[week_index]:
-            week_metrics['net_scheme_revenue'][week_index] = week_metrics['net_scheme_revenue_regulated_generators'][week_index] + week_metrics['net_scheme_revenue_intermittent_generators'][week_index]
-        else:
-            week_metrics['net_scheme_revenue'][week_index] = week_metrics['net_scheme_revenue_regulated_generators'][week_index]
-        
+               
         # Emissions intensities for regulated generators for the given week
-        week_metrics['regulated_generator_emissions_intensities'][week_index] = {g: DCOPF.model.E_HAT[g].expr() for g in DCOPF.model.OMEGA_G}
+        week_metrics['dispatchable_generator_emissions_intensities'][week_index] = {g: DCOPF.model.E_HAT[g].expr() for g in DCOPF.model.OMEGA_G}
 
         # Total emissions [tCO2]
         week_metrics['total_emissions_tCO2'][week_index] = sum(scenario_metrics['total_emissions_tCO2'][(week_index, s)] for s in DCOPF.df_scenarios.columns.levels[1])
         
         # Weekly energy output for each generator
-        week_metrics['regulated_generator_energy_MWh'][week_index] = {g: sum(scenario_metrics['regulated_generator_energy_MWh'][(week_index, s)][g] for s in DCOPF.df_scenarios.columns.levels[1]) for g in DCOPF.model.OMEGA_G}
+        week_metrics['dispatchable_generator_energy_MWh'][week_index] = {g: sum(scenario_metrics['dispatchable_generator_energy_MWh'][(week_index, s)][g] for s in DCOPF.df_scenarios.columns.levels[1]) for g in DCOPF.model.OMEGA_G}
         
         # Total output from generators subjected to emissions intensity policy [MWh]
-        week_metrics['total_regulated_generator_energy_MWh'][week_index] = sum(scenario_metrics['total_regulated_generator_energy_MWh'][(week_index, s)] for s in DCOPF.df_scenarios.columns.levels[1])
+        week_metrics['total_dispatchable_generator_energy_MWh'][week_index] = sum(scenario_metrics['total_dispatchable_generator_energy_MWh'][(week_index, s)] for s in DCOPF.df_scenarios.columns.levels[1])
         
         # Total energy from intermittent generators [MWh] (these incumbent generators are generally not subjected to policy)
         week_metrics['total_intermittent_energy_MWh'][week_index] = sum(scenario_metrics['total_intermittent_energy_MWh'][(week_index, s)] for s in DCOPF.df_scenarios.columns.levels[1])
@@ -1113,14 +1127,8 @@ def run_model(data_dir, scenarios_dir, shock_option, update_mode, description,
         # Total energy demand in given week [MWh]
         week_metrics['total_demand_MWh'][week_index] = sum(scenario_metrics['total_demand_MWh'][(week_index, s)] for s in DCOPF.df_scenarios.columns.levels[1])
         
-        # Average emissions intensity of regulated generators [tCO2/MWh]
-        week_metrics['average_emissions_intensity_regulated_generators'][week_index] = week_metrics['total_emissions_tCO2'][week_index] / week_metrics['total_regulated_generator_energy_MWh'][week_index]
-        
         # Average emissions intensity of whole system (including renewables) [tCO2/MWh]
         week_metrics['average_emissions_intensity_system'][week_index] = week_metrics['total_emissions_tCO2'][week_index] / week_metrics['total_demand_MWh'][week_index]            
-                   
-        # Record rolling scheme revenue at end of calibration interval [$]
-        week_metrics['rolling_scheme_revenue_interval_end'][week_index] = rolling_scheme_revenue_interval_start + week_metrics['net_scheme_revenue'][week_index]
         
         # Total revenue from energy sales for given week [$]
         week_metrics['energy_revenue'][week_index] = sum(scenario_metrics['energy_revenue'][(week_index, s)] for s in DCOPF.df_scenarios.columns.levels[1])
@@ -1128,6 +1136,23 @@ def run_model(data_dir, scenarios_dir, shock_option, update_mode, description,
         # Average energy price [$/MWh]
         week_metrics['average_energy_price'][week_index] = week_metrics['energy_revenue'][week_index] / week_metrics['total_demand_MWh'][week_index]
         
+        # Metrics that depend on whether or not renewables are subject to emissions policy
+        if renewables_included_this_week:
+            # Net scheme revenue when intermittent renewables are covered by policy [$]
+            week_metrics['net_scheme_revenue'][week_index] = week_metrics['net_scheme_revenue_dispatchable_generators'][week_index] + week_metrics['net_scheme_revenue_intermittent_generators'][week_index]
+            
+            # Average emissions intensity of all generators subject to emissions policy generators when renewables included [tCO2/MWh]
+            week_metrics['average_emissions_intensity_regulated_generators'][week_index] = week_metrics['total_emissions_tCO2'][week_index] / (week_metrics['total_dispatchable_generator_energy_MWh'][week_index] + week_metrics['total_intermittent_energy_MWh'][week_index]) 
+
+        else:
+            # Net scheme revenue when existing renewables not covered by policy [$]
+            week_metrics['net_scheme_revenue'][week_index] = week_metrics['net_scheme_revenue_dispatchable_generators'][week_index]
+            
+            # Average emissions intensity of all generators subject to emissions policy generators when renewables included [tCO2/MWh]
+            week_metrics['average_emissions_intensity_regulated_generators'][week_index] = week_metrics['total_emissions_tCO2'][week_index] / week_metrics['total_dispatchable_generator_energy_MWh'][week_index]         
+        
+        # Record rolling scheme revenue at end of calibration interval [$]
+        week_metrics['rolling_scheme_revenue_interval_end'][week_index] = rolling_scheme_revenue_interval_start + week_metrics['net_scheme_revenue'][week_index]       
         
         print(f'Completed week {week_index} in {time.time()-t0:.2f}s')
 
@@ -1224,22 +1249,6 @@ run_model(data_dir=data_dir,
 # In[5]:
 
 
-# intermittent_generators_regulated
-a = {i: False for i in range(1, model_horizon+1)}
-
-{i: {j+1: a[i+j] for j in range(0, forecast_interval)} for i in range(1, model_horizon+1)}
-
-
-
-# In[ ]:
-
-
-
-
-
-# In[6]:
-
-
 def get_all_run_summaries(results_dir):
     """Collate information summarising the parameters used in each run
     
@@ -1280,7 +1289,7 @@ run_summaries = pd.DataFrame.from_dict(get_all_run_summaries(results_dir), orien
 run_summaries
 
 
-# In[ ]:
+# In[6]:
 
 
 # Forecast signals
@@ -1302,21 +1311,21 @@ run_summaries
 
 def get_perfect_forecasts(run_id, forecast_intervals):
     """Get perfect forecast for energy and emissions intensity based on previous model results
-    
+
     Parameters
     ----------
     run_id : str
         ID for run already completed that will result in same emissions / energy output profiles
-    
+
     Returns
     -------
     forecast_generator_energy : dict
         Perfect forecast for generator energy output in each week
-    
+
     forecast_generator_emissions_intensity : dict
         Perfect forecast for generator emissions intensities in each week   
     """
-    
+
     # Load run summary for given run_id
     with open(f'output/{run_id}_run_summary.pickle', 'rb') as f:
         run_summary = pickle.load(f)
@@ -1324,18 +1333,47 @@ def get_perfect_forecasts(run_id, forecast_intervals):
     # Max number of intervals for which forecast can be constructed (based on simulation that
     # produces same energy and emissions profile)
     total_intervals = run_summary[f'{run_id}']['model_horizon']
-    
+
     # Load weekly results for given run_id
     with open(f'output/{run_id}_week_metrics.pickle', 'rb') as f:
         week_metrics = pickle.load(f)
 
-    # Forecast energy
-    forecast_generator_energy = {i: {j+1: week_metrics['regulated_generator_energy_MWh'][i+j] for j in range(0, forecast_intervals)} for i in range(1, total_intervals+1-forecast_intervals+1)}
+    # Forecast dispatchable generator energy
+    forecast_generator_energy = {i: {j+1: week_metrics['dispatchable_generator_energy_MWh'][i+j] for j in range(0, forecast_intervals)} for i in range(1, total_intervals+1-forecast_intervals+1)}
 
     # Forecast generator emissions intensities
-    forecast_generator_emissions_intensity = {i: {j+1: week_metrics['regulated_generator_emissions_intensities'][i+j] for j in range(0, forecast_intervals)} for i in range(1, total_intervals+1-forecast_intervals+1)}
+    forecast_generator_emissions_intensity = {i: {j+1: week_metrics['dispatchable_generator_emissions_intensities'][i+j] for j in range(0, forecast_intervals)} for i in range(1, total_intervals+1-forecast_intervals+1)}
 
-    return forecast_generator_energy, forecast_generator_emissions_intensity
+    # Forecast energy output from intermittent sources
+    forecast_intermittent_generator_energy = {i: {j+1: week_metrics['total_intermittent_energy_MWh'][i+j] for j in range(0, forecast_intervals)} for i in range(1, total_intervals+1-forecast_intervals+1)}
+
+    return forecast_generator_energy, forecast_generator_emissions_intensity, forecast_intermittent_generator_energy
+
+
+def get_formatted_weekly_input(weekly_input, forecast_intervals=1):
+    """Format weekly targets / indicator dictionaries so they can be used in revenue rebalancing or MPC updates
+    
+    Parameters
+    ----------
+    weekly_input : dict
+        Target or indicator given corresponds to a given week
+        
+    forecast_intervals : int
+        Number of forecast intervals if using MPC. Default = 1.
+        
+    Returns
+    -------
+    intermittent_generators_regulated : dict
+        Formatted dictionary denoting whether renewables are eligible in following periods.    
+    """
+    
+    # Length of model horizon
+    model_horizon = len(weekly_input)
+    
+    # Formatted so can be used in either revenue re-balancing or MPC update
+    formatted_weekly_input = {i: {j+1: weekly_input[j+i] for j in range(0, forecast_intervals)} for i in range(1, model_horizon+1-forecast_intervals+1)}
+    
+    return formatted_weekly_input
 
 
 # ## Perfect forecasts
@@ -1346,13 +1384,25 @@ def get_perfect_forecasts(run_id, forecast_intervals):
 # Revenue re-balance - no shocks
 # ------------------------------
 # run_id corresponding to previously simulated scenario that doesn't consider updates
-forecast_run_id = 'D368B8D5'
+forecast_run_id = '7958E7BA'
+
+# Number of intervals in model horizon
+model_horizon = run_summaries.loc[forecast_run_id, 'model_horizon']
 
 # Forecasts to be used in model
-forecast_generator_energy, forecast_generator_emissions_intensity = get_perfect_forecasts(run_id=forecast_run_id, forecast_intervals=1)
+forecast_generator_energy, forecast_generator_emissions_intensity, forecast_intermittent_generator_energy = get_perfect_forecasts(run_id=forecast_run_id, forecast_intervals=1)
 
 # Target scheme revenue - revenue neutral policy
-target_scheme_revenue = {i: 100e3 * i for i in range(1, run_summaries.loc[forecast_run_id, 'model_horizon']+1)}
+weekly_target_scheme_revenue = {i: 100e3 * i for i in range(1, model_horizon+1)}
+
+# Format scheme revenue revenue dictionary so it can be used in model
+target_scheme_revenue = get_formatted_weekly_input(weekly_target_scheme_revenue, forecast_intervals=1)
+
+# Eligibility of renewables to receive payments
+renewables_eligibility = {i: False if i < 5 else True for i in range(1, model_horizon+1)}
+
+# Formatted dictionary indicating renewable generator eligibility
+intermittent_generators_regulated = get_formatted_weekly_input(renewables_eligibility)
 
 # Run model with revenue rebalancing rule
 run_id = run_model(data_dir=data_dir,
@@ -1362,6 +1412,8 @@ run_id = run_model(data_dir=data_dir,
                    description='Attempt to re-balance revenue in each period',
                    forecast_generator_emissions_intensity=forecast_generator_emissions_intensity,
                    forecast_generator_energy=forecast_generator_energy,
+                   forecast_intermittent_generator_energy=forecast_intermittent_generator_energy,
+                   intermittent_generators_regulated=intermittent_generators_regulated,
                    forecast_interval_mpc=None,
                    week_of_shock=None,
                    default_baseline=0,
@@ -1377,20 +1429,31 @@ with open(f'output/{run_id}_week_metrics.pickle', 'rb') as f:
 pd.DataFrame(week_metrics)
 
 
-# In[ ]:
+# In[9]:
 
 
 # Revenue re-balance - emissions intensity shock
 # ----------------------------------------------
 # run_id corresponding to previously simulated scenario that doesn't consider updates
-forecast_run_id = '1AE01292'
+forecast_run_id = 'F8814267'
+
+# Number of intervals in model horizon
+model_horizon = run_summaries.loc[forecast_run_id, 'model_horizon']
 
 # Forecasts to be used in model
-forecast_generator_energy, forecast_generator_emissions_intensity = get_perfect_forecasts(run_id=forecast_run_id, forecast_intervals=1)
+forecast_generator_energy, forecast_generator_emissions_intensity, forecast_intermittent_generator_energy = get_perfect_forecasts(run_id=forecast_run_id, forecast_intervals=1)
 
-# Target scheme revenue - revenue neutral policy
-target_scheme_revenue = {i: 0 for i in range(1, run_summaries.loc[forecast_run_id, 'model_horizon']+1)}
-target_scheme_revenue = {i: 0 if i < 5 else 500e3*i for i in range(1, run_summaries.loc[forecast_run_id, 'model_horizon']+1)}
+# Target scheme revenue
+weekly_target_scheme_revenue = {i: 100e3 * i for i in range(1, model_horizon+1)}
+
+# Format scheme revenue revenue dictionary so it can be used in model
+target_scheme_revenue = get_formatted_weekly_input(weekly_target_scheme_revenue, forecast_intervals=1)
+
+# Eligibility of renewables to receive payments
+renewables_eligibility = {i: False if i < 5 else True for i in range(1, model_horizon+1)}
+
+# Formatted dictionary indicating renewable generator eligibility
+intermittent_generators_regulated = get_formatted_weekly_input(renewables_eligibility)
 
 # Run model with revenue rebalancing rule
 run_id = run_model(data_dir=data_dir,
@@ -1400,6 +1463,7 @@ run_id = run_model(data_dir=data_dir,
                    description='Attempt to re-balance revenue in each period',
                    forecast_generator_emissions_intensity=forecast_generator_emissions_intensity,
                    forecast_generator_energy=forecast_generator_energy,
+                   forecast_intermittent_generator_energy=forecast_intermittent_generator_energy,
                    forecast_interval_mpc=None,
                    week_of_shock=week_of_shock,
                    default_baseline=0,
@@ -1415,23 +1479,34 @@ with open(f'output/{run_id}_week_metrics.pickle', 'rb') as f:
 pd.DataFrame(week_metrics)
 
 
-# In[ ]:
+# In[10]:
 
 
 # MPC update - no shocks
 # ------------------------------
 # run_id corresponding to previously simulated scenario that doesn't consider updates
-forecast_run_id = 'D368B8D5'
+forecast_run_id = '7958E7BA'
+
+# Number of intervals in model horizon
+model_horizon = run_summaries.loc[forecast_run_id, 'model_horizon']
 
 # Number of forecast intervals to be used when implementing MPC controller
 forecast_intervals = 6
 
 # Forecasts to be used in model
-forecast_generator_energy, forecast_generator_emissions_intensity = get_perfect_forecasts(run_id=forecast_run_id, forecast_intervals=forecast_intervals)
+forecast_generator_energy, forecast_generator_emissions_intensity, forecast_intermittent_generator_energy = get_perfect_forecasts(run_id=forecast_run_id, forecast_intervals=forecast_intervals)
 
-# Target scheme revenue - revenue neutral policy - defines revenue to be attained at end of forecast interval
-target_scheme_revenue = {i: 0 for i in range(1, run_summaries.loc[forecast_run_id, 'model_horizon']+1-forecast_intervals+1)}
-target_scheme_revenue[run_summaries.loc[forecast_run_id, 'model_horizon']-forecast_intervals+1] = 1e6
+# Target scheme revenue
+weekly_target_scheme_revenue = {i: 100e3 * i for i in range(1, model_horizon+1)}
+
+# Format scheme revenue revenue dictionary so it can be used in model
+target_scheme_revenue = get_formatted_weekly_input(weekly_target_scheme_revenue, forecast_intervals=forecast_intervals)
+
+# Eligibility of renewables to receive payments
+renewables_eligibility = {i: False if i < 5 else True for i in range(1, model_horizon+1)}
+
+# Formatted dictionary indicating renewable generator eligibility
+intermittent_generators_regulated = get_formatted_weekly_input(renewables_eligibility, forecast_intervals=forecast_intervals)
 
 # Run model with revenue rebalancing rule
 run_id = run_model(data_dir=data_dir,
@@ -1439,8 +1514,10 @@ run_id = run_model(data_dir=data_dir,
                    shock_option='NO_SHOCKS',
                    update_mode='MPC_UPDATE',
                    description='Use MPC to achieve revenue target at end of horizon',
+                   intermittent_generators_regulated=intermittent_generators_regulated,
                    forecast_generator_emissions_intensity=forecast_generator_emissions_intensity,
                    forecast_generator_energy=forecast_generator_energy,
+                   forecast_intermittent_generator_energy=forecast_intermittent_generator_energy,
                    forecast_interval_mpc=forecast_intervals,
                    week_of_shock=None,
                    default_baseline=0,
@@ -1456,22 +1533,34 @@ with open(f'output/{run_id}_week_metrics.pickle', 'rb') as f:
 pd.DataFrame(week_metrics)
 
 
-# In[ ]:
+# In[11]:
 
 
 # MPC update - emissions intensity shock
 # --------------------------------------
 # run_id corresponding to previously simulated scenario that doesn't consider updates
-forecast_run_id = '1AE01292'
+forecast_run_id = 'F8814267'
+
+# Number of intervals in model horizon
+model_horizon = run_summaries.loc[forecast_run_id, 'model_horizon']
 
 # Number of forecast intervals to be used when implementing MPC controller
 forecast_intervals = 6
 
 # Forecasts to be used in model
-forecast_generator_energy, forecast_generator_emissions_intensity = get_perfect_forecasts(run_id=forecast_run_id, forecast_intervals=forecast_intervals)
+forecast_generator_energy, forecast_generator_emissions_intensity, forecast_intermittent_generator_energy = get_perfect_forecasts(run_id=forecast_run_id, forecast_intervals=forecast_intervals)
 
-# Target scheme revenue - revenue neutral policy
-target_scheme_revenue = {i: 0 for i in range(1, run_summaries.loc[forecast_run_id, 'model_horizon']+1)}
+# Target scheme revenue
+weekly_target_scheme_revenue = {i: 100e3 * i for i in range(1, model_horizon+1)}
+
+# Format scheme revenue revenue dictionary so it can be used in model
+target_scheme_revenue = get_formatted_weekly_input(weekly_target_scheme_revenue, forecast_intervals=forecast_intervals)
+
+# Eligibility of renewables to receive payments
+renewables_eligibility = {i: False if i < 5 else True for i in range(1, model_horizon+1)}
+
+# Formatted dictionary indicating renewable generator eligibility
+intermittent_generators_regulated = get_formatted_weekly_input(renewables_eligibility, forecast_intervals=forecast_intervals)
 
 # Run model with revenue rebalancing rule
 run_id = run_model(data_dir=data_dir,
@@ -1479,8 +1568,10 @@ run_id = run_model(data_dir=data_dir,
                    shock_option='EMISSIONS_INTENSITY_SHOCK',
                    update_mode='MPC_UPDATE',
                    description='Use MPC to achieve revenue target at end of horizon',
+                   intermittent_generators_regulated=intermittent_generators_regulated,
                    forecast_generator_emissions_intensity=forecast_generator_emissions_intensity,
                    forecast_generator_energy=forecast_generator_energy,
+                   forecast_intermittent_generator_energy=forecast_intermittent_generator_energy,
                    forecast_interval_mpc=forecast_intervals,
                    week_of_shock=week_of_shock,
                    default_baseline=0,
@@ -1496,9 +1587,856 @@ with open(f'output/{run_id}_week_metrics.pickle', 'rb') as f:
 pd.DataFrame(week_metrics)
 
 
-# ## Imperfect forecast
+# ## Imperfect forecasts
 
-# In[ ]:
+# In[12]:
+
+
+def get_perturbed_forecast(forecast_type, forecast, uncertainty_increment):
+    """Add unceratinty to forecasted values
+    
+    Parameters
+    ----------
+    forecast_type : str
+        Type of forecast to be perturbed (underlying forecast has different dictionary structure).
+        Options - INTERMITTENT_ENERGY or GENERATOR_ENERGY
+    
+    forecast : dict
+        Perfect forecast
+        
+    uncertainty_increment : float
+        Percentage uncertainty to be used in scaling factor for each week. E.g. if 0.05, then
+        the first week's (perfect) forecast will be scaled by a uniformly distributed random number
+        in the interval (0.95, 1.05), if the second week it will be scaled by a number in the interval 
+        (0.9, 1.1) and so on.
+        
+    
+    Returns
+    -------
+    perturbed_forecast : dict
+        Forecasted values with some uncertainty    
+    """
+    
+    # Check that forecast_type is valid
+    if forecast_type not in ['INTERMITTENT_ENERGY', 'GENERATOR_ENERGY']:
+        raise(Exception(f'Unexpected forecast_type encountered: {forecast_type}'))
+    
+    # Perturb perfect forecast by scaling by uniformly distributed random number. Uncertainty increases as
+    # when looking further into the future
+    
+    if forecast_type == 'GENERATOR_ENERGY':
+        perturbed_forecast = {key_1: 
+                              {key_2: 
+                               {key_3: value_3 * np.random.uniform(1-(uncertainty_increment*key_2), 1+(uncertainty_increment*key_2)) 
+                                for key_3, value_3 in value_2.items()} for key_2, value_2 in value_1.items()} 
+                              for key_1, value_1 in forecast.items()}
+    
+    elif forecast_type == 'INTERMITTENT_ENERGY':
+        perturbed_forecast = {key_1: 
+                              {key_2: value_2*np.random.uniform(0.9, 1.1) for key_2, value_2 in value_1.items()} 
+                              for key_1, value_1 in forecast.items()}
+    else:
+        raise(Exception(f'Unexpected forecast_type encountered: {forecast_type}'))
+    
+    return perturbed_forecast
+
+
+# ### Revenue neutral policy - uncertainty in forecasts
+# #### Revenue rebalancing rule
+
+# In[13]:
+
+
+# Seed random number generator
+np.random.seed(10)
+
+
+# Revenue re-balance - no shocks - uncertainty in forecasts
+# ---------------------------------------------------------
+# run_id corresponding to previously simulated scenario that doesn't consider updates
+forecast_run_id = '7958E7BA'
+
+# Number of intervals in model horizon
+model_horizon = run_summaries.loc[forecast_run_id, 'model_horizon']
+
+# Forecasts to be used in model
+forecast_generator_energy, forecast_generator_emissions_intensity, forecast_intermittent_generator_energy = get_perfect_forecasts(run_id=forecast_run_id, forecast_intervals=1)
+
+
+# Perturb forecasts
+# -----------------
+# Amount by which to increment uncertainty interval (both sides) for each week into the future
+uncertainty_increment = 0.05
+
+# Perturbed generator energy forecast
+forecast_generator_energy_perturbed = get_perturbed_forecast(forecast_type='GENERATOR_ENERGY', forecast=forecast_generator_energy, uncertainty_increment=uncertainty_increment)
+
+# Perturbed intermittent generator energy forecast
+forecast_intermittent_generator_energy_perturbed = get_perturbed_forecast(forecast_type='INTERMITTENT_ENERGY', forecast=forecast_intermittent_generator_energy, uncertainty_increment=uncertainty_increment)
+
+
+# Define target revenue and renewables eligibility
+# ------------------------------------------------
+# Target scheme revenue - revenue neutral policy
+weekly_target_scheme_revenue = {i: 0 for i in range(1, model_horizon+1)}
+
+# Format scheme revenue revenue dictionary so it can be used in model
+target_scheme_revenue = get_formatted_weekly_input(weekly_target_scheme_revenue, forecast_intervals=1)
+
+# Eligibility of renewables to receive payments
+renewables_eligibility = {i: False for i in range(1, model_horizon+1)}
+
+# Formatted dictionary indicating renewable generator eligibility
+intermittent_generators_regulated = get_formatted_weekly_input(renewables_eligibility)
+
+
+# Run model with revenue rebalancing rule
+# ---------------------------------------
+run_id = run_model(data_dir=data_dir,
+                   scenarios_dir=scenarios_dir,
+                   shock_option='NO_SHOCKS',
+                   update_mode='REVENUE_REBALANCE_UPDATE',
+                   description='Attempt to re-balance revenue in each period - forecast uncertainty',
+                   forecast_generator_emissions_intensity=forecast_generator_emissions_intensity,
+                   forecast_generator_energy=forecast_generator_energy_perturbed,
+                   forecast_intermittent_generator_energy=forecast_intermittent_generator_energy_perturbed,
+                   intermittent_generators_regulated=intermittent_generators_regulated,
+                   forecast_interval_mpc=None,
+                   week_of_shock=None,
+                   default_baseline=0,
+                   initial_permit_price=40,
+                   initial_rolling_scheme_revenue=0,
+                   target_scheme_revenue=target_scheme_revenue,
+                   seed=10,
+                   model_horizon=model_horizon)
+
+# Check that updating rule has worked correctly
+with open(f'output/{run_id}_week_metrics.pickle', 'rb') as f:
+    week_metrics = pickle.load(f)
+pd.DataFrame(week_metrics)
+
+
+# #### MPC updating
+
+# In[14]:
+
+
+# MPC updating - no shocks - uncertainty in forecasts
+# ---------------------------------------------------
+# run_id corresponding to previously simulated scenario that doesn't consider updates
+forecast_run_id = '7958E7BA'
+
+# Number of intervals in model horizon
+model_horizon = run_summaries.loc[forecast_run_id, 'model_horizon']
+
+# Number of forecast intervals to be used when implementing MPC controller
+forecast_intervals = 6
+
+# Forecasts to be used in model
+forecast_generator_energy, forecast_generator_emissions_intensity, forecast_intermittent_generator_energy = get_perfect_forecasts(run_id=forecast_run_id, forecast_intervals=forecast_intervals)
+
+
+# Perturb forecasts
+# -----------------
+# Amount by which to increment uncertainty interval (both sides) for each week into the future
+uncertainty_increment = 0.05
+
+# Perturbed generator energy forecast
+forecast_generator_energy_perturbed = get_perturbed_forecast(forecast_type='GENERATOR_ENERGY', forecast=forecast_generator_energy, uncertainty_increment=uncertainty_increment)
+
+# Perturbed intermittent generator energy forecast
+forecast_intermittent_generator_energy_perturbed = get_perturbed_forecast(forecast_type='INTERMITTENT_ENERGY', forecast=forecast_intermittent_generator_energy, uncertainty_increment=uncertainty_increment)
+
+
+# Define target revenue and renewables eligibility
+# ------------------------------------------------
+# Target scheme revenue - revenue neutral policy
+weekly_target_scheme_revenue = {i: 0 for i in range(1, model_horizon+1)}
+
+# Format scheme revenue revenue dictionary so it can be used in model
+target_scheme_revenue = get_formatted_weekly_input(weekly_target_scheme_revenue, forecast_intervals=forecast_intervals)
+
+# Eligibility of renewables to receive payments
+renewables_eligibility = {i: False for i in range(1, model_horizon+1)}
+
+# Formatted dictionary indicating renewable generator eligibility
+intermittent_generators_regulated = get_formatted_weekly_input(renewables_eligibility, forecast_intervals=forecast_intervals)
+
+
+# Run model with revenue MPC updating rule
+run_id = run_model(data_dir=data_dir,
+                   scenarios_dir=scenarios_dir,
+                   shock_option='NO_SHOCKS',
+                   update_mode='MPC_UPDATE',
+                   description='Use MPC to achieve revenue target at end of horizon - uncertainty in forecasts',
+                   intermittent_generators_regulated=intermittent_generators_regulated,
+                   forecast_generator_emissions_intensity=forecast_generator_emissions_intensity,
+                   forecast_generator_energy=forecast_generator_energy_perturbed,
+                   forecast_intermittent_generator_energy=forecast_intermittent_generator_energy_perturbed,
+                   forecast_interval_mpc=forecast_intervals,
+                   week_of_shock=None,
+                   default_baseline=0,
+                   initial_permit_price=40,
+                   initial_rolling_scheme_revenue=0,
+                   target_scheme_revenue=target_scheme_revenue,
+                   seed=10,
+                   model_horizon=model_horizon)
+
+# Check that updating rule has worked correctly
+with open(f'output/{run_id}_week_metrics.pickle', 'rb') as f:
+    week_metrics = pickle.load(f)
+pd.DataFrame(week_metrics)
+
+
+# ### Revenue target - uncertainty in forecasts
+# #### Revenue rebalancing rule
+
+# In[15]:
+
+
+# Revenue re-balance - no shocks - uncertainty in forecasts
+# ---------------------------------------------------------
+# run_id corresponding to previously simulated scenario that doesn't consider updates
+forecast_run_id = '7958E7BA'
+
+# Number of intervals in model horizon
+model_horizon = run_summaries.loc[forecast_run_id, 'model_horizon']
+
+# Forecasts to be used in model
+forecast_generator_energy, forecast_generator_emissions_intensity, forecast_intermittent_generator_energy = get_perfect_forecasts(run_id=forecast_run_id, forecast_intervals=1)
+
+
+# Perturb forecasts
+# -----------------
+# Amount by which to increment uncertainty interval (both sides) for each week into the future
+uncertainty_increment = 0.05
+
+# Perturbed generator energy forecast
+forecast_generator_energy_perturbed = get_perturbed_forecast(forecast_type='GENERATOR_ENERGY', forecast=forecast_generator_energy, uncertainty_increment=uncertainty_increment)
+
+# Perturbed intermittent generator energy forecast
+forecast_intermittent_generator_energy_perturbed = get_perturbed_forecast(forecast_type='INTERMITTENT_ENERGY', forecast=forecast_intermittent_generator_energy, uncertainty_increment=uncertainty_increment)
+
+
+# Define target revenue and renewables eligibility
+# ------------------------------------------------
+# Target scheme revenue - attain positive revenue
+weekly_target_scheme_revenue = {i: 0 for i in range(1, model_horizon+1)}
+
+# Incrementally increase revenue up to a point and then maintain the same level
+for i in range(1, model_horizon+1):
+    if i > 3 and i < 7:
+        weekly_target_scheme_revenue[i] = weekly_target_scheme_revenue[i-1] + 10e6
+    elif i >= 7:
+        weekly_target_scheme_revenue[i] = weekly_target_scheme_revenue[i-1]
+
+# Format scheme revenue revenue dictionary so it can be used in model
+target_scheme_revenue = get_formatted_weekly_input(weekly_target_scheme_revenue, forecast_intervals=1)
+
+# Eligibility of renewables to receive payments
+renewables_eligibility = {i: False for i in range(1, model_horizon+1)}
+
+# Formatted dictionary indicating renewable generator eligibility
+intermittent_generators_regulated = get_formatted_weekly_input(renewables_eligibility)
+
+
+# Run model with revenue rebalancing rule
+# ---------------------------------------
+run_id = run_model(data_dir=data_dir,
+                   scenarios_dir=scenarios_dir,
+                   shock_option='NO_SHOCKS',
+                   update_mode='REVENUE_REBALANCE_UPDATE',
+                   description='Attempt to attain revenue target in each period - forecast uncertainty',
+                   forecast_generator_emissions_intensity=forecast_generator_emissions_intensity,
+                   forecast_generator_energy=forecast_generator_energy_perturbed,
+                   forecast_intermittent_generator_energy=forecast_intermittent_generator_energy_perturbed,
+                   intermittent_generators_regulated=intermittent_generators_regulated,
+                   forecast_interval_mpc=None,
+                   week_of_shock=None,
+                   default_baseline=0,
+                   initial_permit_price=40,
+                   initial_rolling_scheme_revenue=0,
+                   target_scheme_revenue=target_scheme_revenue,
+                   seed=10,
+                   model_horizon=model_horizon)
+
+# Check that updating rule has worked correctly
+with open(f'output/{run_id}_week_metrics.pickle', 'rb') as f:
+    week_metrics = pickle.load(f)
+pd.DataFrame(week_metrics)
+
+
+# #### MPC updating rule
+
+# In[16]:
+
+
+# MPC updating - no shocks - uncertainty in forecasts - target scheme revenue
+# ---------------------------------------------------------------------------
+# run_id corresponding to previously simulated scenario that doesn't consider updates
+forecast_run_id = '7958E7BA'
+
+# Number of intervals in model horizon
+model_horizon = run_summaries.loc[forecast_run_id, 'model_horizon']
+
+# Number of forecast intervals to be used when implementing MPC controller
+forecast_intervals = 6
+
+# Forecasts to be used in model
+forecast_generator_energy, forecast_generator_emissions_intensity, forecast_intermittent_generator_energy = get_perfect_forecasts(run_id=forecast_run_id, forecast_intervals=forecast_intervals)
+
+
+# Perturb forecasts
+# -----------------
+# Amount by which to increment uncertainty interval (both sides) for each week into the future
+uncertainty_increment = 0.05
+
+# Perturbed generator energy forecast
+forecast_generator_energy_perturbed = get_perturbed_forecast(forecast_type='GENERATOR_ENERGY', forecast=forecast_generator_energy, uncertainty_increment=uncertainty_increment)
+
+# Perturbed intermittent generator energy forecast
+forecast_intermittent_generator_energy_perturbed = get_perturbed_forecast(forecast_type='INTERMITTENT_ENERGY', forecast=forecast_intermittent_generator_energy, uncertainty_increment=uncertainty_increment)
+
+
+# Define target revenue and renewables eligibility
+# ------------------------------------------------
+# Target scheme revenue - revenue neutral policy
+weekly_target_scheme_revenue = {i: 0 for i in range(1, model_horizon+1)}
+
+# Incrementally increase revenue up to a point and then maintain the same level
+for i in range(1, model_horizon+1):
+    if i > 3 and i < 7:
+        weekly_target_scheme_revenue[i] = weekly_target_scheme_revenue[i-1] + 10e6
+    elif i >= 7:
+        weekly_target_scheme_revenue[i] = weekly_target_scheme_revenue[i-1]
+
+# Format scheme revenue revenue dictionary so it can be used in model
+target_scheme_revenue = get_formatted_weekly_input(weekly_target_scheme_revenue, forecast_intervals=forecast_intervals)
+
+# Eligibility of renewables to receive payments
+renewables_eligibility = {i: False for i in range(1, model_horizon+1)}
+
+# Formatted dictionary indicating renewable generator eligibility
+intermittent_generators_regulated = get_formatted_weekly_input(renewables_eligibility, forecast_intervals=forecast_intervals)
+
+
+# Run model with revenue MPC updating rule
+run_id = run_model(data_dir=data_dir,
+                   scenarios_dir=scenarios_dir,
+                   shock_option='NO_SHOCKS',
+                   update_mode='MPC_UPDATE',
+                   description='Use MPC to incrementally increase scheme revenue then maintain level - uncertainty in forecasts',
+                   intermittent_generators_regulated=intermittent_generators_regulated,
+                   forecast_generator_emissions_intensity=forecast_generator_emissions_intensity,
+                   forecast_generator_energy=forecast_generator_energy_perturbed,
+                   forecast_intermittent_generator_energy=forecast_intermittent_generator_energy_perturbed,
+                   forecast_interval_mpc=forecast_intervals,
+                   week_of_shock=None,
+                   default_baseline=0,
+                   initial_permit_price=40,
+                   initial_rolling_scheme_revenue=0,
+                   target_scheme_revenue=target_scheme_revenue,
+                   seed=10,
+                   model_horizon=model_horizon)
+
+# Check that updating rule has worked correctly
+with open(f'output/{run_id}_week_metrics.pickle', 'rb') as f:
+    week_metrics = pickle.load(f)
+pd.DataFrame(week_metrics)
+
+
+# ### Emissions intensity shock - anticipated - uncertainty in forecasts
+# #### Revenue rebalancing rule
+
+# In[17]:
+
+
+# Revenue re-balance - emissions intensity shock - revenue neutral - uncertainty in forecasts
+# -------------------------------------------------------------------------------------------
+# run_id corresponding to previously simulated scenario that doesn't consider updates
+forecast_run_id = 'F8814267'
+
+# Number of intervals in model horizon
+model_horizon = run_summaries.loc[forecast_run_id, 'model_horizon']
+
+# Forecasts to be used in model
+forecast_generator_energy, forecast_generator_emissions_intensity, forecast_intermittent_generator_energy = get_perfect_forecasts(run_id=forecast_run_id, forecast_intervals=1)
+
+
+# Perturb forecasts
+# -----------------
+# Amount by which to increment uncertainty interval (both sides) for each week into the future
+uncertainty_increment = 0.05
+
+# Perturbed generator energy forecast
+forecast_generator_energy_perturbed = get_perturbed_forecast(forecast_type='GENERATOR_ENERGY', forecast=forecast_generator_energy, uncertainty_increment=uncertainty_increment)
+
+# Perturbed intermittent generator energy forecast
+forecast_intermittent_generator_energy_perturbed = get_perturbed_forecast(forecast_type='INTERMITTENT_ENERGY', forecast=forecast_intermittent_generator_energy, uncertainty_increment=uncertainty_increment)
+
+
+# Define target revenue and renewables eligibility
+# ------------------------------------------------
+# Target scheme revenue - revenue neutral policy
+weekly_target_scheme_revenue = {i: 0 for i in range(1, model_horizon+1)}
+
+# Format scheme revenue revenue dictionary so it can be used in model
+target_scheme_revenue = get_formatted_weekly_input(weekly_target_scheme_revenue, forecast_intervals=1)
+
+# Eligibility of renewables to receive payments
+renewables_eligibility = {i: False for i in range(1, model_horizon+1)}
+
+# Formatted dictionary indicating renewable generator eligibility
+intermittent_generators_regulated = get_formatted_weekly_input(renewables_eligibility)
+
+
+# Run model with revenue rebalancing rule
+# ---------------------------------------
+run_id = run_model(data_dir=data_dir,
+                   scenarios_dir=scenarios_dir,
+                   shock_option='EMISSIONS_INTENSITY_SHOCK',
+                   update_mode='REVENUE_REBALANCE_UPDATE',
+                   description='Attempt to re-balance revenue in each period - forecast uncertainty',
+                   forecast_generator_emissions_intensity=forecast_generator_emissions_intensity,
+                   forecast_generator_energy=forecast_generator_energy_perturbed,
+                   forecast_intermittent_generator_energy=forecast_intermittent_generator_energy_perturbed,
+                   intermittent_generators_regulated=intermittent_generators_regulated,
+                   forecast_interval_mpc=None,
+                   week_of_shock=3,
+                   default_baseline=0,
+                   initial_permit_price=40,
+                   initial_rolling_scheme_revenue=0,
+                   target_scheme_revenue=target_scheme_revenue,
+                   seed=10,
+                   model_horizon=model_horizon)
+
+# Check that updating rule has worked correctly
+with open(f'output/{run_id}_week_metrics.pickle', 'rb') as f:
+    week_metrics = pickle.load(f)
+pd.DataFrame(week_metrics)
+
+
+# #### MPC updating rule
+
+# In[18]:
+
+
+# MPC updating - emissions intensity shock - revenue neutral - uncertainty in forecasts
+# -------------------------------------------------------------------------------------
+# run_id corresponding to previously simulated scenario that doesn't consider updates
+forecast_run_id = 'F8814267'
+
+# Forecast intervals
+forecast_intervals = 6
+
+# Number of intervals in model horizon
+model_horizon = run_summaries.loc[forecast_run_id, 'model_horizon']
+
+# Forecasts to be used in model
+forecast_generator_energy, forecast_generator_emissions_intensity, forecast_intermittent_generator_energy = get_perfect_forecasts(run_id=forecast_run_id, forecast_intervals=forecast_intervals)
+
+
+# Perturb forecasts
+# -----------------
+# Amount by which to increment uncertainty interval (both sides) for each week into the future
+uncertainty_increment = 0.05
+
+# Perturbed generator energy forecast
+forecast_generator_energy_perturbed = get_perturbed_forecast(forecast_type='GENERATOR_ENERGY', forecast=forecast_generator_energy, uncertainty_increment=uncertainty_increment)
+
+# Perturbed intermittent generator energy forecast
+forecast_intermittent_generator_energy_perturbed = get_perturbed_forecast(forecast_type='INTERMITTENT_ENERGY', forecast=forecast_intermittent_generator_energy, uncertainty_increment=uncertainty_increment)
+
+
+# Define target revenue and renewables eligibility
+# ------------------------------------------------
+# Target scheme revenue - revenue neutral policy
+weekly_target_scheme_revenue = {i: 0 for i in range(1, model_horizon+1)}
+
+# Format scheme revenue revenue dictionary so it can be used in model
+target_scheme_revenue = get_formatted_weekly_input(weekly_target_scheme_revenue, forecast_intervals=forecast_intervals)
+
+# Eligibility of renewables to receive payments
+renewables_eligibility = {i: False for i in range(1, model_horizon+1)}
+
+# Formatted dictionary indicating renewable generator eligibility
+intermittent_generators_regulated = get_formatted_weekly_input(renewables_eligibility, forecast_intervals=forecast_intervals)
+
+
+# Run model with revenue rebalancing rule
+# ---------------------------------------
+run_id = run_model(data_dir=data_dir,
+                   scenarios_dir=scenarios_dir,
+                   shock_option='EMISSIONS_INTENSITY_SHOCK',
+                   update_mode='MPC_UPDATE',
+                   description='Attempt to re-balance revenue in each period using MPC - forecast uncertainty',
+                   forecast_generator_emissions_intensity=forecast_generator_emissions_intensity,
+                   forecast_generator_energy=forecast_generator_energy_perturbed,
+                   forecast_intermittent_generator_energy=forecast_intermittent_generator_energy_perturbed,
+                   intermittent_generators_regulated=intermittent_generators_regulated,
+                   forecast_interval_mpc=forecast_intervals,
+                   week_of_shock=3,
+                   default_baseline=0,
+                   initial_permit_price=40,
+                   initial_rolling_scheme_revenue=0,
+                   target_scheme_revenue=target_scheme_revenue,
+                   seed=10,
+                   model_horizon=model_horizon)
+
+# Check that updating rule has worked correctly
+with open(f'output/{run_id}_week_metrics.pickle', 'rb') as f:
+    week_metrics = pickle.load(f)
+pd.DataFrame(week_metrics)
+
+
+# ### Emissions intensity shock - unanticipated - uncertainty in forecasts
+# #### Revenue rebalancing rule
+
+# In[19]:
+
+
+# Revenue re-balance - emissions intensity shock - revenue neutral - uncertainty in forecasts
+# -------------------------------------------------------------------------------------------
+
+# Anticipated shock forecast
+# --------------------------
+# run_id corresponding to previously simulated scenario that doesn't consider updates but does consider
+# emissions intensity shock
+forecast_run_id = 'F8814267'
+
+# Number of intervals in model horizon
+model_horizon = run_summaries.loc[forecast_run_id, 'model_horizon']
+
+# Week of shock
+week_of_shock = run_summaries.loc[forecast_run_id, 'week_of_shock']
+
+# Forecasts to be used in model
+forecast_generator_energy, forecast_generator_emissions_intensity, forecast_intermittent_generator_energy = get_perfect_forecasts(run_id=forecast_run_id, forecast_intervals=1)
+
+
+# No shock forecast
+# -----------------
+# run_id corresponding to previously simulated scenario that doesn't consider updates or emission
+# intensity shock
+forecast_run_id_no_shock = '7958E7BA'
+
+# Forecasts that don't anticipate shock
+forecast_generator_energy_no_shock, forecast_generator_emissions_intensity_no_shock, forecast_intermittent_generator_energy_no_shock = get_perfect_forecasts(run_id=forecast_run_id_no_shock, forecast_intervals=1)
+
+
+# Combine forecasts
+# -----------------
+# Update generator energy forecast
+forecast_generator_energy[week_of_shock] = forecast_generator_energy_no_shock[week_of_shock]
+
+# Update generator emissions intensity forecast
+forecast_generator_emissions_intensity[week_of_shock] = forecast_generator_emissions_intensity_no_shock[week_of_shock]
+
+# Update intermittent energy forecast
+forecast_intermittent_generator_energy[week_of_shock] = forecast_intermittent_generator_energy_no_shock[week_of_shock]
+
+
+# Perturb forecasts
+# -----------------
+# Amount by which to increment uncertainty interval (both sides) for each week into the future
+uncertainty_increment = 0.05
+
+# Perturbed generator energy forecast
+forecast_generator_energy_perturbed = get_perturbed_forecast(forecast_type='GENERATOR_ENERGY', forecast=forecast_generator_energy, uncertainty_increment=uncertainty_increment)
+
+# Perturbed intermittent generator energy forecast
+forecast_intermittent_generator_energy_perturbed = get_perturbed_forecast(forecast_type='INTERMITTENT_ENERGY', forecast=forecast_intermittent_generator_energy, uncertainty_increment=uncertainty_increment)
+
+
+# Define target revenue and renewables eligibility
+# ------------------------------------------------
+# Target scheme revenue - revenue neutral policy
+weekly_target_scheme_revenue = {i: 0 for i in range(1, model_horizon+1)}
+
+# Format scheme revenue revenue dictionary so it can be used in model
+target_scheme_revenue = get_formatted_weekly_input(weekly_target_scheme_revenue, forecast_intervals=1)
+
+# Eligibility of renewables to receive payments
+renewables_eligibility = {i: False for i in range(1, model_horizon+1)}
+
+# Formatted dictionary indicating renewable generator eligibility
+intermittent_generators_regulated = get_formatted_weekly_input(renewables_eligibility)
+
+
+# Run model with revenue rebalancing rule
+# ---------------------------------------
+run_id = run_model(data_dir=data_dir,
+                   scenarios_dir=scenarios_dir,
+                   shock_option='EMISSIONS_INTENSITY_SHOCK',
+                   update_mode='REVENUE_REBALANCE_UPDATE',
+                   description='Attempt to re-balance revenue in each period - unanticipated emissions intensity shock - forecast uncertainty',
+                   forecast_generator_emissions_intensity=forecast_generator_emissions_intensity,
+                   forecast_generator_energy=forecast_generator_energy_perturbed,
+                   forecast_intermittent_generator_energy=forecast_intermittent_generator_energy_perturbed,
+                   intermittent_generators_regulated=intermittent_generators_regulated,
+                   forecast_interval_mpc=None,
+                   week_of_shock=week_of_shock,
+                   default_baseline=0,
+                   initial_permit_price=40,
+                   initial_rolling_scheme_revenue=0,
+                   target_scheme_revenue=target_scheme_revenue,
+                   seed=10,
+                   model_horizon=model_horizon)
+
+# Check that updating rule has worked correctly
+with open(f'output/{run_id}_week_metrics.pickle', 'rb') as f:
+    week_metrics = pickle.load(f)
+pd.DataFrame(week_metrics)
+
+
+# #### MPC updating rule
+
+# In[20]:
+
+
+# MPC updating - emissions intensity shock - revenue neutral - uncertainty in forecasts
+# -------------------------------------------------------------------------------------
+# Forecast intervals
+forecast_intervals = 6
+
+# Anticipated shock forecast
+# --------------------------
+# run_id corresponding to previously simulated scenario that doesn't consider updates but does consider
+# emissions intensity shock
+forecast_run_id = 'F8814267'
+
+# Number of intervals in model horizon
+model_horizon = run_summaries.loc[forecast_run_id, 'model_horizon']
+
+# Week of shock
+week_of_shock = run_summaries.loc[forecast_run_id, 'week_of_shock']
+
+# Forecasts to be used in model
+forecast_generator_energy, forecast_generator_emissions_intensity, forecast_intermittent_generator_energy = get_perfect_forecasts(run_id=forecast_run_id, forecast_intervals=forecast_intervals)
+
+
+# No shock forecast
+# -----------------
+# run_id corresponding to previously simulated scenario that doesn't consider updates or emission
+# intensity shock
+forecast_run_id_no_shock = '7958E7BA'
+
+# Forecasts that don't anticipate shock
+forecast_generator_energy_no_shock, forecast_generator_emissions_intensity_no_shock, forecast_intermittent_generator_energy_no_shock = get_perfect_forecasts(run_id=forecast_run_id_no_shock, forecast_intervals=forecast_intervals)
+
+
+# Combine forecasts
+# -----------------
+for week in range(1, int(week_of_shock)+1):
+    # Update generator energy forecast
+    forecast_generator_energy[week] = forecast_generator_energy_no_shock[week]
+
+    # Update generator emissions intensity forecast
+    forecast_generator_emissions_intensity[week] = forecast_generator_emissions_intensity_no_shock[week]
+
+    # Update intermittent energy forecast
+    forecast_intermittent_generator_energy[week] = forecast_intermittent_generator_energy_no_shock[week]
+
+
+# Perturb forecasts
+# -----------------
+# Amount by which to increment uncertainty interval (both sides) for each week into the future
+uncertainty_increment = 0.05
+
+# Perturbed generator energy forecast
+forecast_generator_energy_perturbed = get_perturbed_forecast(forecast_type='GENERATOR_ENERGY', forecast=forecast_generator_energy, uncertainty_increment=uncertainty_increment)
+
+# Perturbed intermittent generator energy forecast
+forecast_intermittent_generator_energy_perturbed = get_perturbed_forecast(forecast_type='INTERMITTENT_ENERGY', forecast=forecast_intermittent_generator_energy, uncertainty_increment=uncertainty_increment)
+
+
+# Define target revenue and renewables eligibility
+# ------------------------------------------------
+# Target scheme revenue - revenue neutral policy
+weekly_target_scheme_revenue = {i: 0 for i in range(1, model_horizon+1)}
+
+# Format scheme revenue revenue dictionary so it can be used in model
+target_scheme_revenue = get_formatted_weekly_input(weekly_target_scheme_revenue, forecast_intervals=forecast_intervals)
+
+# Eligibility of renewables to receive payments
+renewables_eligibility = {i: False for i in range(1, model_horizon+1)}
+
+# Formatted dictionary indicating renewable generator eligibility
+intermittent_generators_regulated = get_formatted_weekly_input(renewables_eligibility, forecast_intervals=forecast_intervals)
+
+
+# Run model with revenue rebalancing rule
+# ---------------------------------------
+run_id = run_model(data_dir=data_dir,
+                   scenarios_dir=scenarios_dir,
+                   shock_option='EMISSIONS_INTENSITY_SHOCK',
+                   update_mode='MPC_UPDATE',
+                   description='Attempt to re-balance revenue in each period using MPC - unanticipated emissions intensity shock - forecast uncertainty',
+                   forecast_generator_emissions_intensity=forecast_generator_emissions_intensity,
+                   forecast_generator_energy=forecast_generator_energy_perturbed,
+                   forecast_intermittent_generator_energy=forecast_intermittent_generator_energy_perturbed,
+                   intermittent_generators_regulated=intermittent_generators_regulated,
+                   forecast_interval_mpc=forecast_intervals,
+                   week_of_shock=week_of_shock,
+                   default_baseline=0,
+                   initial_permit_price=40,
+                   initial_rolling_scheme_revenue=0,
+                   target_scheme_revenue=target_scheme_revenue,
+                   seed=10,
+                   model_horizon=model_horizon)
+
+# Check that updating rule has worked correctly
+with open(f'output/{run_id}_week_metrics.pickle', 'rb') as f:
+    week_metrics = pickle.load(f)
+pd.DataFrame(week_metrics)
+
+
+# ### Renewables included in scheme
+# #### Revenue rebalancing rule
+
+# In[21]:
+
+
+# Revenue re-balance - no shocks - uncertainty in forecasts - renewables included at given week
+# ---------------------------------------------------------------------------------------------
+# run_id corresponding to previously simulated scenario that doesn't consider updates
+forecast_run_id = '7958E7BA'
+
+# Number of intervals in model horizon
+model_horizon = run_summaries.loc[forecast_run_id, 'model_horizon']
+
+# Forecasts to be used in model
+forecast_generator_energy, forecast_generator_emissions_intensity, forecast_intermittent_generator_energy = get_perfect_forecasts(run_id=forecast_run_id, forecast_intervals=1)
+
+
+# Perturb forecasts
+# -----------------
+# Amount by which to increment uncertainty interval (both sides) for each week into the future
+uncertainty_increment = 0.05
+
+# Perturbed generator energy forecast
+forecast_generator_energy_perturbed = get_perturbed_forecast(forecast_type='GENERATOR_ENERGY', forecast=forecast_generator_energy, uncertainty_increment=uncertainty_increment)
+
+# Perturbed intermittent generator energy forecast
+forecast_intermittent_generator_energy_perturbed = get_perturbed_forecast(forecast_type='INTERMITTENT_ENERGY', forecast=forecast_intermittent_generator_energy, uncertainty_increment=uncertainty_increment)
+
+
+# Define target revenue and renewables eligibility
+# ------------------------------------------------
+# Target scheme revenue - revenue neutral policy
+weekly_target_scheme_revenue = {i: 0 for i in range(1, model_horizon+1)}
+
+# Format scheme revenue revenue dictionary so it can be used in model
+target_scheme_revenue = get_formatted_weekly_input(weekly_target_scheme_revenue, forecast_intervals=1)
+
+# Eligibility of renewables to receive payments
+renewables_eligibility = {i: False if i <= 3 else True for i in range(1, model_horizon+1)}
+
+# Formatted dictionary indicating renewable generator eligibility
+intermittent_generators_regulated = get_formatted_weekly_input(renewables_eligibility)
+
+
+# Run model with revenue rebalancing rule
+# ---------------------------------------
+run_id = run_model(data_dir=data_dir,
+                   scenarios_dir=scenarios_dir,
+                   shock_option='NO_SHOCKS',
+                   update_mode='REVENUE_REBALANCE_UPDATE',
+                   description='Attempt to re-balance revenue in each period - renewables receive payments beginning from week 3 - forecast uncertainty',
+                   forecast_generator_emissions_intensity=forecast_generator_emissions_intensity,
+                   forecast_generator_energy=forecast_generator_energy_perturbed,
+                   forecast_intermittent_generator_energy=forecast_intermittent_generator_energy_perturbed,
+                   intermittent_generators_regulated=intermittent_generators_regulated,
+                   forecast_interval_mpc=None,
+                   week_of_shock=None,
+                   default_baseline=0,
+                   initial_permit_price=40,
+                   initial_rolling_scheme_revenue=0,
+                   target_scheme_revenue=target_scheme_revenue,
+                   seed=10,
+                   model_horizon=model_horizon)
+
+# Check that updating rule has worked correctly
+with open(f'output/{run_id}_week_metrics.pickle', 'rb') as f:
+    week_metrics = pickle.load(f)
+pd.DataFrame(week_metrics)
+
+
+# #### MPC updating
+
+# In[22]:
+
+
+# MPC updating - no shocks - uncertainty in forecasts
+# ---------------------------------------------------
+# run_id corresponding to previously simulated scenario that doesn't consider updates
+forecast_run_id = '7958E7BA'
+
+# Number of intervals in model horizon
+model_horizon = run_summaries.loc[forecast_run_id, 'model_horizon']
+
+# Number of forecast intervals to be used when implementing MPC controller
+forecast_intervals = 6
+
+# Forecasts to be used in model
+forecast_generator_energy, forecast_generator_emissions_intensity, forecast_intermittent_generator_energy = get_perfect_forecasts(run_id=forecast_run_id, forecast_intervals=forecast_intervals)
+
+
+# Perturb forecasts
+# -----------------
+# Amount by which to increment uncertainty interval (both sides) for each week into the future
+uncertainty_increment = 0.05
+
+# Perturbed generator energy forecast
+forecast_generator_energy_perturbed = get_perturbed_forecast(forecast_type='GENERATOR_ENERGY', forecast=forecast_generator_energy, uncertainty_increment=uncertainty_increment)
+
+# Perturbed intermittent generator energy forecast
+forecast_intermittent_generator_energy_perturbed = get_perturbed_forecast(forecast_type='INTERMITTENT_ENERGY', forecast=forecast_intermittent_generator_energy, uncertainty_increment=uncertainty_increment)
+
+
+# Define target revenue and renewables eligibility
+# ------------------------------------------------
+# Target scheme revenue - revenue neutral policy
+weekly_target_scheme_revenue = {i: 0 for i in range(1, model_horizon+1)}
+
+# Format scheme revenue revenue dictionary so it can be used in model
+target_scheme_revenue = get_formatted_weekly_input(weekly_target_scheme_revenue, forecast_intervals=forecast_intervals)
+
+# Eligibility of renewables to receive payments
+renewables_eligibility = {i: False if i <= 3 else True for i in range(1, model_horizon+1)}
+
+# Formatted dictionary indicating renewable generator eligibility
+intermittent_generators_regulated = get_formatted_weekly_input(renewables_eligibility, forecast_intervals=forecast_intervals)
+
+
+# Run model with revenue MPC updating rule
+run_id = run_model(data_dir=data_dir,
+                   scenarios_dir=scenarios_dir,
+                   shock_option='NO_SHOCKS',
+                   update_mode='MPC_UPDATE',
+                   description='Use MPC to achieve revenue target at end of horizon - uncertainty in forecasts',
+                   intermittent_generators_regulated=intermittent_generators_regulated,
+                   forecast_generator_emissions_intensity=forecast_generator_emissions_intensity,
+                   forecast_generator_energy=forecast_generator_energy_perturbed,
+                   forecast_intermittent_generator_energy=forecast_intermittent_generator_energy_perturbed,
+                   forecast_interval_mpc=forecast_intervals,
+                   week_of_shock=None,
+                   default_baseline=0,
+                   initial_permit_price=40,
+                   initial_rolling_scheme_revenue=0,
+                   target_scheme_revenue=target_scheme_revenue,
+                   seed=10,
+                   model_horizon=model_horizon)
+
+# Check that updating rule has worked correctly
+with open(f'output/{run_id}_week_metrics.pickle', 'rb') as f:
+    week_metrics = pickle.load(f)
+pd.DataFrame(week_metrics)
+
+
+# ## Plotting
+
+# In[23]:
 
 
 import matplotlib.pyplot as plt
