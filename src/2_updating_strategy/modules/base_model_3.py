@@ -1522,10 +1522,10 @@ scenarios_dir = os.path.join(os.path.curdir, os.path.pardir, os.path.pardir, '1_
 # Default parameters
 # ------------------
 # Total number of week considered by model (starting from week 1)
-model_horizon = 10
+model_horizon = 52
 
 # Week at which emissions intensity shock occurs (if specified to happen)
-week_of_shock = 3
+week_of_shock = 10
 
 # Seed used for random number generator
 seed = 10
@@ -1566,10 +1566,10 @@ positive_revenue_target = dict()
 revenue_ramp_week_start = week_of_shock
 
 # Number of intervals over which revenue target is ramped up
-revenue_ramp_intervals = 3
+revenue_ramp_intervals = 10
 
 # Amount to increment revenue target each period when ramping revenue
-revenue_ramp_increment = 1e6
+revenue_ramp_increment = 3e6
 
 # Ramp revenue by increasing increment after week_of_shock for predefined number of weeks.
 # Then maintain revenue at specified level.
