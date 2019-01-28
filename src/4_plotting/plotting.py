@@ -1,7 +1,7 @@
 
 # coding: utf-8
 
-# In[107]:
+# In[1]:
 
 
 import os
@@ -68,10 +68,18 @@ run_summaries = pd.DataFrame.from_dict(get_run_summaries(results_dir), orient='i
 # In[4]:
 
 
-run_summaries
+# Correct typo in case description ('uanticipated' should be 'unanticipated')
+# run_summaries.loc['1496BFFB', 'description'] = 'Revenue rebalance update - revenue neutral - unanticipated emissions intensity shock - imperfect forecast'
 
 
-# In[192]:
+# In[5]:
+
+
+for index, row in run_summaries.iterrows():
+    print(index, row['description'])
+
+
+# In[6]:
 
 
 def is_revenue_neutral(revenue_target):
@@ -141,150 +149,216 @@ def renewables_become_eligible(renewables_eligible):
     return renewables_are_eligible
 
 
-# In[165]:
-
-
-def get_series_data(shock_option, update_mode, revenue_neutral, renewables_eligible, forecast_uncertainty_increment, series_name, description_filter=''):
-    """Extract data for given case
+def get_case_run_id(update_mode, shock_option, anticipated_shock, forecast_uncertainty_increment, 
+                    revenue_neutral, renewables_eligible):
+    """Given case parameters, find run_id corresponding to case
     
     Parameters
     ----------
-    shock_option : str
-        Type of shock applied to the scheme
-       
     update_mode : str
-        Updating mechanism used
+        Type of baseline updating used
+        Options - NO_UPDATE, MPC_UPDATE, REVENUE_REBALANCE_UPDATE
     
-    revenue_neutral : bool
-        Defines if revenue neutral schemes are to be investigated
+    shock_option : str
+        Type of shock subjected to model
+        Options - NO_SHOCK, EMISSIONS_INTENSITY_SHOCK
     
-    renewables_eligible : bool
-        Defines if renewables are eligible for emissions payments under scheme
+    anticipated_shock : bool or None
+        Denotes if shock was anticipated. Use None if no shock (i.e. not applicable)
         
     forecast_uncertainty_increment : float
-        Scaling factor used to perturb perfect forecast
+        Scaling factor used when perturbing forecasts
+    
+    revenue_neutral : bool
+        Defines if revenue neutral target employed. True = revenue neutral target,
+        False = Non-revenue neutral target
+    
+    renewables_eligible : bool
+        Defines if renewables are eligibile for emissions payments 
+        
+    
+    Returns
+    -------
+    run_id : str
+        ID of case which satisfies given criteria
+    """
+    
+    # Check that update mode and shock_option are valid
+    if update_mode not in ['NO_UPDATE', 'MPC_UPDATE', 'REVENUE_REBALANCE_UPDATE']:
+        raise(Exception(f'Unexpected update_mode specified: {update_mode}'))
+    
+    if shock_option not in ['NO_SHOCKS', 'EMISSIONS_INTENSITY_SHOCK']:
+        raise(Exception(f'Unexpected shock_option specified: {shock_option}'))
+        
+    # Check if shock was anticipated or not (or if not applicable in which case
+    # anticipated shock = None).
+    if anticipated_shock is None:
+        description_filter_1 = ''
+    
+    elif anticipated_shock:
+        description_filter_1 = ' anticipated'
+    
+    else:
+        description_filter_1 = ' unanticipated'
+
+
+    # run_summaries.loc[(run_summaries['update_mode'] == update_mode) and ]
+    mask = run_summaries.apply(lambda x: (x['shock_option'] == shock_option)
+                               and (x['update_mode'] == update_mode)
+                               and (x['forecast_uncertainty_increment'] == forecast_uncertainty_increment)
+                               and (is_revenue_neutral(x['target_scheme_revenue']) == revenue_neutral)
+                               and (renewables_become_eligible(x['intermittent_generators_regulated']) == renewables_eligible)
+                               and (description_filter_1 in x['description']), axis=1)
+
+    if len(run_summaries.loc[mask].index) != 1:
+        raise(Exception(f'Should only return 1 run_id, returned : {run_summaries.loc[mask].index}'))
+
+    return run_summaries.loc[mask].index[0]
+
+
+def get_case_run_id_by_description(description):
+    """Given description text, get run ID for given case
+    
+    Parameters
+    ----------
+    description : str
+        String used to describe case
+    
+    Returns
+    -------
+    run_id : str
+        Run ID for the described case    
+    """
+    
+    # All IDs corresponding to the given case description
+    mask = run_summaries['description']==description
+    ids = run_summaries.loc[mask].index
+    
+    if len(ids) != 1:
+        raise(Exception(f'Should only return 1 run_id, returned : {run_summaries.loc[mask].index}'))
+    
+    return run_summaries.loc[mask].index[0]
+    
+
+def get_case_data(run_id, series_name):
+    """Extract data for given run_id and series_name
+    
+    Parameters
+    ----------
+    run_id : str
+        ID of case for which data should be extracted
     
     series_name : str
         Name of series for which data should be extracted
     
-    description_filter : str
-        Word that must appear in case description. Default = ''. Default will always return
-        True.
-    
     
     Returns
     -------
-    x : list
-        list of independent variables
+    index : list
+        Series index
     
-    y : list
-        list of dependent variables
-    
-    run_id : str
-        ID of case for which data has been extracted
+    values : list
+        Series values  
     """
-
-    # Filter case run IDs by following criteria
-    mask = run_summaries.apply(lambda x: (is_revenue_neutral(x['target_scheme_revenue']) == revenue_neutral)
-                               and (x['forecast_uncertainty_increment'] == forecast_uncertainty_increment)
-                               and (renewables_become_eligible(x['intermittent_generators_regulated']) == renewables_eligible)
-                               and (x['shock_option'] == shock_option) 
-                               and (x['update_mode'] == update_mode)
-                               and (description_filter in x['description']), axis=1)
-
-    # Check number of cases returned (should only be one case matching all criteria)
-    if len(run_summaries.loc[mask].index) != 1:
-        raise(Exception(f'Returned more than one case matching criteria: {run_summaries.loc[mask].index}'))
-    else:
-        run_id = run_summaries.loc[mask].index[0]
-
-    # Load week metrics data for given run_id
+    
     with open(os.path.join(results_dir, f'{run_id}_week_metrics.pickle'), 'rb') as f:
         week_metrics = pickle.load(f)
+        
+    index, values = list(week_metrics[series_name].keys()), list(week_metrics[series_name].values())
 
-    # Independent variables
-    x = pd.DataFrame(week_metrics).index.tolist()
-    
-    # Dependent variables 
-    y = pd.DataFrame(week_metrics)[series_name].tolist()
-
-    return x, y, run_id
-
-
-# In[166]:
-
-
-# Revenue - neutral
-# -----------------
-# Baselines
-# ---------
-# Revenue re-balance update - revenue neutral - no shocks
-x1, y1, _ = get_series_data(shock_option='NO_SHOCKS', update_mode='REVENUE_REBALANCE_UPDATE', revenue_neutral=True, renewables_eligible=False, forecast_uncertainty_increment=0.05, series_name='baseline')
-
-# MPC update - revenue neutral - no shocks
-x2, y2, _ = get_series_data(shock_option='NO_SHOCKS', update_mode='MPC_UPDATE', revenue_neutral=True, renewables_eligible=False, forecast_uncertainty_increment=0.05, series_name='baseline')
-
-
-# Scheme revenue
-# --------------
-# Revenue re-balancing update mechanism - rolling scheme revenue
-x3, y3, _ = get_series_data(shock_option='NO_SHOCKS', update_mode='REVENUE_REBALANCE_UPDATE', revenue_neutral=True, renewables_eligible=False, forecast_uncertainty_increment=0.05, series_name='rolling_scheme_revenue_interval_end')
-
-# MPC updating mechanism - rolling scheme revenue
-x4, y4, _ = get_series_data(shock_option='NO_SHOCKS', update_mode='MPC_UPDATE', revenue_neutral=True, renewables_eligible=False, forecast_uncertainty_increment=0.05, series_name='rolling_scheme_revenue_interval_end')
+    return index, values
 
 
 
-# Revenue - target
-# ----------------
-# Baselines
-# ---------
-# Revenue re-balance update - revenue target - no shocks
-x5, y5, r5 = get_series_data(shock_option='NO_SHOCKS', update_mode='REVENUE_REBALANCE_UPDATE', revenue_neutral=False, renewables_eligible=False, forecast_uncertainty_increment=0.05, series_name='baseline')
-
-# MPC update - revenue neutral - no shocks
-x6, y6, _ = get_series_data(shock_option='NO_SHOCKS', update_mode='MPC_UPDATE', revenue_neutral=False, renewables_eligible=False, forecast_uncertainty_increment=0.05, series_name='baseline')
-
-
-# Scheme revenue
-# --------------
-# Revenue re-balancing update mechanism - rolling scheme revenue
-x7, y7, _ = get_series_data(shock_option='NO_SHOCKS', update_mode='REVENUE_REBALANCE_UPDATE', revenue_neutral=False, renewables_eligible=False, forecast_uncertainty_increment=0.05, series_name='rolling_scheme_revenue_interval_end')
-
-# MPC updating mechanism - rolling scheme revenue
-x8, y8, _ = get_series_data(shock_option='NO_SHOCKS', update_mode='MPC_UPDATE', revenue_neutral=False, renewables_eligible=False, forecast_uncertainty_increment=0.05, series_name='rolling_scheme_revenue_interval_end')
-
+# In[7]:
 
 
 # Emissions intensity
 # -------------------
-# Average emissions intensity of regulated generators (generators eligible for emissions payments)
-x9, y9, _ = get_series_data(shock_option='NO_SHOCKS', update_mode='MPC_UPDATE', revenue_neutral=True, renewables_eligible=False, forecast_uncertainty_increment=0.05, series_name='average_emissions_intensity_regulated_generators')
+# Run ID
+r0 = get_case_run_id_by_description(description='carbon tax - no shocks')
+
+# Baseline
+x_e0, y_e0 = get_case_data(run_id=r0, series_name='average_emissions_intensity_regulated_generators')
 
 
-# In[167]:
+# Revenue neutral case - no shocks - revenue re-balancing update
+# --------------------------------------------------------------
+# Run ID
+r1 = get_case_run_id(update_mode='REVENUE_REBALANCE_UPDATE', shock_option='NO_SHOCKS', anticipated_shock=None, 
+                     forecast_uncertainty_increment=0.05, revenue_neutral=True, renewables_eligible=False)
+# Baseline
+x_b1, y_b1 = get_case_data(run_id=r1, series_name='baseline')
+
+# Rolling scheme revenue
+x_r1, y_r1 = get_case_data(run_id=r1, series_name='rolling_scheme_revenue_interval_end')
+
+
+# Revenue neutral case - no shocks - MPC
+# --------------------------------------
+# Run ID
+r2 = get_case_run_id(update_mode='MPC_UPDATE', shock_option='NO_SHOCKS', anticipated_shock=None, 
+                     forecast_uncertainty_increment=0.05, revenue_neutral=True, renewables_eligible=False)
+# Baseline
+x_b2, y_b2 = get_case_data(run_id=r2, series_name='baseline')
+
+# Rolling scheme revenue
+x_r2, y_r2 = get_case_data(run_id=r2, series_name='rolling_scheme_revenue_interval_end')
+
+
+
+# Revenue target case - no shocks - revenue re-balancing update
+# --------------------------------------------------------------
+# Run ID
+r3 = get_case_run_id(update_mode='REVENUE_REBALANCE_UPDATE', shock_option='NO_SHOCKS', anticipated_shock=None, 
+                     forecast_uncertainty_increment=0.05, revenue_neutral=False, renewables_eligible=False)
+# Baseline
+x_b3, y_b3 = get_case_data(run_id=r3, series_name='baseline')
+
+# Rolling scheme revenue
+x_r3, y_r3 = get_case_data(run_id=r3, series_name='rolling_scheme_revenue_interval_end')
+
+
+# Revenue target case - no shocks - MPC
+# --------------------------------------
+# Run ID
+r4 = get_case_run_id(update_mode='MPC_UPDATE', shock_option='NO_SHOCKS', anticipated_shock=None, 
+                     forecast_uncertainty_increment=0.05, revenue_neutral=False, renewables_eligible=False)
+# Baseline
+x_b4, y_b4 = get_case_data(run_id=r4, series_name='baseline')
+
+# Rolling scheme revenue
+x_r4, y_r4 = get_case_data(run_id=r4, series_name='rolling_scheme_revenue_interval_end')
+
+
+# In[8]:
 
 
 def create_baseline_revenue_figure(fname, 
-                                   revenue_rebalance_baseline_1, 
-                                   mpc_update_baseline_1,
-                                   revenue_rebalance_revenue_1,
-                                   mpc_update_revenue_1,
-                                   revenue_rebalance_baseline_2, 
-                                   mpc_update_baseline_2,
-                                   revenue_rebalance_revenue_2,
-                                   mpc_update_revenue_2,
-                                   emissions_intensity):
-   
+                                   rebalance_baseline_1,
+                                   rebalance_revenue_1,
+                                   mpc_baseline_1,
+                                   mpc_revenue_1,
+                                   rebalance_baseline_2,
+                                   rebalance_revenue_2,
+                                   mpc_baseline_2,
+                                   mpc_revenue_2,
+                                   emissions_intensity,
+                                   revenue_target_1=0,
+                                   revenue_target_2=0,
+                                   **kwargs):
+    
+    "Consruct and format plot from given input signals"
+
     # Revenue rebalancing - first scenario
-    x1, y1 = revenue_rebalance_baseline_1
-    x2, y2 = mpc_update_baseline_1
-    x3, y3 = revenue_rebalance_revenue_1
-    x4, y4 = mpc_update_revenue_1
-    x5, y5 = revenue_rebalance_baseline_2
-    x6, y6 = mpc_update_baseline_2
-    x7, y7 = revenue_rebalance_revenue_2
-    x8, y8 = mpc_update_revenue_2
+    x1, y1 = rebalance_baseline_1
+    x2, y2 = mpc_baseline_1
+    x3, y3 = rebalance_revenue_1
+    x4, y4 = mpc_revenue_1
+    x5, y5 = rebalance_baseline_2
+    x6, y6 = mpc_baseline_2
+    x7, y7 = rebalance_revenue_2
+    x8, y8 = mpc_revenue_2
     x9, y9 = emissions_intensity
 
     
@@ -297,31 +371,54 @@ def create_baseline_revenue_figure(fname,
 
     plt.clf()
 
+    # Initialise figure
     fig, axs = plt.subplots(nrows=2, ncols=2, sharex='col', sharey='row')
 
-    # Revenue neutral
+    # First Series
+    # ------------
+    # Baselines
     axs[0, 0].step(x1, y1, where='post', color=reb_curve, linewidth=1.1) # Revenue re-balance baseline
     axs[0, 0].step(x2, y2, where='post', color=mpc_curve, linewidth=1.1) # MPC update baseline
-    axs[0, 0].set_ylim([1, 1.04])
-
+    
+    if 'ylim_1'in kwargs:
+        axs[0, 0].set_ylim(kwargs['ylim_1'])
+    
+    # Scheme revenue
     axs[1, 0].plot(x3, [i/1e6 for i in y3], color=reb_curve, linewidth=1.1) # Revenue rebalance scheme revenue
     axs[1, 0].plot(x4, [i/1e6 for i in y4], color=mpc_curve, linewidth=1.1) # MPC update scheme revenue
-
-    # Revenue target
+    
+    if 'ylim_2'in kwargs:
+        axs[1, 0].set_ylim(kwargs['ylim_2'])
+    
+    # Second series
+    # -------------
+    # Baselines
     axs[0, 1].step(x5, y5, where='post', color=reb_curve, linewidth=1.1) # Revenue rebalance - revenue target - baseline
     axs[0, 1].step(x6, y6, where='post', color=mpc_curve, linewidth=1.1) # MPC update - revenue target - baseline
+    
+    # Scheme revenue
     l1, = axs[1, 1].plot(x7, [i/1e6 for i in y7], color=reb_curve, label='Revenue rebalancing', linewidth=1.1) # Revenue rebalance - revenue target - scheme revenue
     l2, = axs[1, 1].plot(x8, [i/1e6 for i in y8], color=mpc_curve, label='MPC update', linewidth=1.1) # MPC update - revenue target - scheme revenue
-    axs[0, 1].set_ylim([1, 1.04])
 
+    
+    
+    
+    # Other
+    # -----
     # Emissions intensity
     axs[0, 0].plot(x9, y9, color=emission_int, linewidth=1.1)
     l3, = axs[0, 1].plot(x9, y9, color=emission_int, label='Emissions intensity', linewidth=1.1)
 
     # Revenue targets
-    axs[1, 0].plot([x1[0], x1[-1]], [0, 0], color=rev_target, linestyle='--', linewidth=0.9)
-    l4, = axs[1, 1].plot([x9[0], x9[-1]], [10, 10], color=rev_target, linestyle='--', linewidth=0.9, label='Revenue target')
+    axs[1, 0].plot([x1[0], x1[-1]], [revenue_target_1, revenue_target_1], color=rev_target, linestyle='--', linewidth=0.9)
+    l4, = axs[1, 1].plot([x9[0], x9[-1]], [revenue_target_2, revenue_target_2], color=rev_target, linestyle='--', linewidth=0.9, label='Revenue target')
 
+    # Week of shock
+    if 'week_of_shock' in kwargs:
+        axs[1, 0].plot([kwargs['week_of_shock'], kwargs['week_of_shock']], [-50, 50], color='#399656', linestyle='-.', linewidth=0.9)
+        axs[0, 0].plot([kwargs['week_of_shock'], kwargs['week_of_shock']], [-50, 50], color='#399656', linestyle='-.', linewidth=0.9)
+        axs[0, 1].plot([kwargs['week_of_shock'], kwargs['week_of_shock']], [-50, 50], color='#399656', linestyle='-.', linewidth=0.9)
+        axs[1, 1].plot([kwargs['week_of_shock'], kwargs['week_of_shock']], [-50, 50], color='#399656', linestyle='-.', linewidth=0.9)
 
     # Format axes
     # -----------
@@ -335,11 +432,11 @@ def create_baseline_revenue_figure(fname,
     axs[0, 0].set_xlabel('(a)', fontsize=8)
     axs[0, 1].set_xlabel('(b)', fontsize=8)
     axs[1, 0].set_ylabel('Revenue (\$ 10$^\mathdefault{6}$)', fontsize=8)
-    axs[1, 0].set_xlabel('(c)\nWeek', fontsize=8)
+    axs[1, 0].set_xlabel('(c)\nWeek', fontsize=8, labelpad=-2)
     axs[1, 0].xaxis.set_tick_params(labelsize=8)
     axs[0, 0].yaxis.set_tick_params(labelsize=8)
     axs[1, 0].yaxis.set_tick_params(labelsize=8)
-    axs[1, 1].set_xlabel('(d)\nWeek', fontsize=8)
+    axs[1, 1].set_xlabel('(d)\nWeek', fontsize=8, labelpad=-2)
     axs[1, 1].xaxis.set_tick_params(labelsize=8)
 
     minorLocator = MultipleLocator(2)
@@ -365,149 +462,166 @@ def create_baseline_revenue_figure(fname,
     fig.savefig(f'output/{fname}', dpi=400)
 
 
-# In[168]:
+# In[9]:
 
 
+# Comparison between revenue neutral and revenue targeting objectives
 create_baseline_revenue_figure(fname='revenue_neutral_and_revenue_target.png',
-                               revenue_rebalance_baseline_1=(x1, y1),
-                               mpc_update_baseline_1=(x2, y2),
-                               revenue_rebalance_revenue_1=(x3, y3),
-                               mpc_update_revenue_1=(x4, y4),
-                               revenue_rebalance_baseline_2=(x5, y5),
-                               mpc_update_baseline_2=(x6, y6),
-                               revenue_rebalance_revenue_2=(x7, y7),
-                               mpc_update_revenue_2=(x8, y8),
-                               emissions_intensity=(x9, y9))
+                               rebalance_baseline_1=(x_b1, y_b1),
+                               rebalance_revenue_1=(x_r1, y_r1),
+                               mpc_baseline_1=(x_b2, y_b2),
+                               mpc_revenue_1=(x_r2, y_r2),
+                               rebalance_baseline_2=(x_b3, y_b3),
+                               rebalance_revenue_2=(x_r3, y_r3),
+                               mpc_baseline_2=(x_b4, y_b4),
+                               mpc_revenue_2=(x_r4, y_r4),
+                               emissions_intensity=(x_e0, y_e0),
+                               revenue_target_2=10)
 
 
-# In[174]:
-
-
-# Revenue - neutral
-# -----------------
-# Baselines
-# ---------
-# Revenue re-balance update - revenue neutral - no shocks
-x1, y1, _ = get_series_data(shock_option='EMISSIONS_INTENSITY_SHOCK', update_mode='REVENUE_REBALANCE_UPDATE', revenue_neutral=True, renewables_eligible=False, forecast_uncertainty_increment=0.05, series_name='baseline', description_filter=' anticipated')
-
-# MPC update - revenue neutral - no shocks
-x2, y2, _ = get_series_data(shock_option='EMISSIONS_INTENSITY_SHOCK', update_mode='MPC_UPDATE', revenue_neutral=True, renewables_eligible=False, forecast_uncertainty_increment=0.05, series_name='baseline', description_filter=' anticipated')
-
-
-# Scheme revenue
-# --------------
-# Revenue re-balancing update mechanism - rolling scheme revenue
-x3, y3, _ = get_series_data(shock_option='EMISSIONS_INTENSITY_SHOCK', update_mode='REVENUE_REBALANCE_UPDATE', revenue_neutral=True, renewables_eligible=False, forecast_uncertainty_increment=0.05, series_name='rolling_scheme_revenue_interval_end', description_filter=' anticipated')
-
-# MPC updating mechanism - rolling scheme revenue
-x4, y4, _ = get_series_data(shock_option='EMISSIONS_INTENSITY_SHOCK', update_mode='MPC_UPDATE', revenue_neutral=True, renewables_eligible=False, forecast_uncertainty_increment=0.05, series_name='rolling_scheme_revenue_interval_end', description_filter=' anticipated')
-
-
-
-# Revenue - target
-# ----------------
-# Baselines
-# ---------
-# Revenue re-balance update - revenue target - no shocks
-x5, y5, r5 = get_series_data(shock_option='EMISSIONS_INTENSITY_SHOCK', update_mode='REVENUE_REBALANCE_UPDATE', revenue_neutral=True, renewables_eligible=False, forecast_uncertainty_increment=0.05, series_name='baseline', description_filter='unanticipated')
-
-# MPC update - revenue neutral - no shocks
-x6, y6, _ = get_series_data(shock_option='EMISSIONS_INTENSITY_SHOCK', update_mode='MPC_UPDATE', revenue_neutral=True, renewables_eligible=False, forecast_uncertainty_increment=0.05, series_name='baseline', description_filter='unanticipated')
-
-
-# Scheme revenue
-# --------------
-# Revenue re-balancing update mechanism - rolling scheme revenue
-x7, y7, _ = get_series_data(shock_option='EMISSIONS_INTENSITY_SHOCK', update_mode='REVENUE_REBALANCE_UPDATE', revenue_neutral=True, renewables_eligible=False, forecast_uncertainty_increment=0.05, series_name='rolling_scheme_revenue_interval_end', description_filter='unanticipated')
-
-# MPC updating mechanism - rolling scheme revenue
-x8, y8, _ = get_series_data(shock_option='EMISSIONS_INTENSITY_SHOCK', update_mode='MPC_UPDATE', revenue_neutral=True, renewables_eligible=False, forecast_uncertainty_increment=0.05, series_name='rolling_scheme_revenue_interval_end', description_filter='unanticipated')
-
+# In[10]:
 
 
 # Emissions intensity
 # -------------------
-# Average emissions intensity of regulated generators (generators eligible for emissions payments)
-x9, y9, _ = get_series_data(shock_option='EMISSIONS_INTENSITY_SHOCK', update_mode='MPC_UPDATE', revenue_neutral=True, renewables_eligible=False, forecast_uncertainty_increment=0.05, series_name='average_emissions_intensity_regulated_generators', description_filter='unanticipated')
+# Run ID
+r0 = get_case_run_id_by_description(description='carbon tax - emissions intensity shock')
+
+# Baseline
+x_e0, y_e0 = get_case_data(run_id=r0, series_name='average_emissions_intensity_regulated_generators')
 
 
-# In[175]:
+# Revenue neutral case - no shocks - revenue re-balancing update
+# --------------------------------------------------------------
+# Run ID
+r1 = get_case_run_id(update_mode='REVENUE_REBALANCE_UPDATE', shock_option='EMISSIONS_INTENSITY_SHOCK', anticipated_shock=True, 
+                     forecast_uncertainty_increment=0.05, revenue_neutral=True, renewables_eligible=False)
+# Baseline
+x_b1, y_b1 = get_case_data(run_id=r1, series_name='baseline')
+
+# Rolling scheme revenue
+x_r1, y_r1 = get_case_data(run_id=r1, series_name='rolling_scheme_revenue_interval_end')
 
 
-for index, row in run_summaries.iterrows():
-    print(index, row['description'])
+# Revenue neutral case - no shocks - MPC
+# --------------------------------------
+# Run ID
+r2 = get_case_run_id(update_mode='MPC_UPDATE', shock_option='EMISSIONS_INTENSITY_SHOCK', anticipated_shock=True, 
+                     forecast_uncertainty_increment=0.05, revenue_neutral=True, renewables_eligible=False)
+# Baseline
+x_b2, y_b2 = get_case_data(run_id=r2, series_name='baseline')
+
+# Rolling scheme revenue
+x_r2, y_r2 = get_case_data(run_id=r2, series_name='rolling_scheme_revenue_interval_end')
 
 
-# In[181]:
+
+# Revenue target case - no shocks - revenue re-balancing update
+# --------------------------------------------------------------
+# Run ID
+r3 = get_case_run_id(update_mode='REVENUE_REBALANCE_UPDATE', shock_option='EMISSIONS_INTENSITY_SHOCK', anticipated_shock=False, 
+                     forecast_uncertainty_increment=0.05, revenue_neutral=True, renewables_eligible=False)
+# Baseline
+x_b3, y_b3 = get_case_data(run_id=r3, series_name='baseline')
+
+# Rolling scheme revenue
+x_r3, y_r3 = get_case_data(run_id=r3, series_name='rolling_scheme_revenue_interval_end')
 
 
-run_id = '1496BFFB'
-series_name = 'baseline'
+# Revenue target case - no shocks - MPC
+# --------------------------------------
+# Run ID
+r4 = get_case_run_id(update_mode='MPC_UPDATE', shock_option='EMISSIONS_INTENSITY_SHOCK', anticipated_shock=False, 
+                     forecast_uncertainty_increment=0.05, revenue_neutral=True, renewables_eligible=False)
+# Baseline
+x_b4, y_b4 = get_case_data(run_id=r4, series_name='baseline')
 
-def get_case_data(run_id, series_name):
-    "Extract data for given run_id and series_name"
-    
-    with open(os.path.join(results_dir, f'{run_id}_week_metrics.pickle'), 'rb') as f:
-        week_metrics = pickle.load(f)
-
-    return list(week_metrics[series_name].keys()), list(week_metrics[series_name].values())
-
-
-# In[183]:
+# Rolling scheme revenue
+x_r4, y_r4 = get_case_data(run_id=r4, series_name='rolling_scheme_revenue_interval_end')
 
 
-x, y = get_case_data(run_id, series_name)
+# In[11]:
 
 
-# update_mode - REVENUE_REBALANCE_UPDATE, MPC_UPDATE
-# shock_type - NO_SHOCKS, EMISSIONS_INTENSITY_SHOCK
-# 
-# revenue neutral - True / False
-# renewables_become_eligible - True / False
-# 
-# forecast_uncertainty increment - float
-# anticipated_shock - True / False / None
-
-# In[212]:
-
-
-def get_case_run_id(update_mode, shock_option, anticipated_shock, forecast_uncertainty_increment, revenue_neutral, renewables_eligible):
-    
-    "Given case parameters, find run_id corresponding to case"
-
-    if anticipated_shock is None:
-        description_filter_1 = ''
-    elif anticipated_shock:
-        description_filter_1 = ' anticipated'
-    else:
-        description_filter_1 = ' unanticipated'
+create_baseline_revenue_figure(fname='anticipated_and_unanticipated_emissions_intensity_shock.png',
+                               rebalance_baseline_1=(x_b1, y_b1),
+                               rebalance_revenue_1=(x_r1, y_r1),
+                               mpc_baseline_1=(x_b2, y_b2),
+                               mpc_revenue_1=(x_r2, y_r2),
+                               rebalance_baseline_2=(x_b3, y_b3),
+                               rebalance_revenue_2=(x_r3, y_r3),
+                               mpc_baseline_2=(x_b4, y_b4),
+                               mpc_revenue_2=(x_r4, y_r4),
+                               emissions_intensity=(x_e0, y_e0),
+                               revenue_target_2=0,
+                               ylim_1=[0.8, 1.05],
+                               ylim_2=[-27, 27])
 
 
-    # run_summaries.loc[(run_summaries['update_mode'] == update_mode) and ]
-    mask = run_summaries.apply(lambda x: (x['shock_option'] == shock_option)
-                               and (x['update_mode'] == update_mode)
-                               and (x['forecast_uncertainty_increment'] == forecast_uncertainty_increment)
-                               and (is_revenue_neutral(x['target_scheme_revenue']) == revenue_neutral)
-                               and (renewables_become_eligible(x['intermittent_generators_regulated']) == renewables_eligible)
-                               and (description_filter_1 in x['description']), axis=1)
+# Business as usual case
 
-    if len(run_summaries.loc[mask].index) != 1:
-        raise(Exception(f'Should only return 1 run_id, returned : {run_summaries.loc[mask].index}'))
-
-    return run_summaries.loc[mask].index[0]
+# In[12]:
 
 
-update_mode = 'MPC_UPDATE'
-shock_option = 'NO_SHOCKS'
-forecast_uncertainty_increment = 0.05
-revenue_neutral = True
-renewables_eligible = True
-anticipated_shock = None
+# r1 = 
+r1 = get_case_run_id_by_description('business as usual')
 
-get_case_run_id(update_mode='MPC_UPDATE',
-                shock_option='NO_SHOCKS',
-                anticipated_shock=None,
-                forecast_uncertainty_increment=0.05,
-                revenue_neutral=True,
-                renewables_eligible=True)
+with open(os.path.join(results_dir, f'{r1}_week_metrics.pickle'), 'rb') as f:
+    week_metrics = pickle.load(f)
+
+
+# In[56]:
+
+
+x1, y1 = list(week_metrics['total_dispatchable_generator_energy_MWh'].keys()), list(week_metrics['total_dispatchable_generator_energy_MWh'].values())
+x2, y2 = list(week_metrics['total_intermittent_energy_MWh'].keys()), list(week_metrics['total_intermittent_energy_MWh'].values())
+x3, y3 = list(week_metrics['total_emissions_tCO2'].keys()), list(week_metrics['total_emissions_tCO2'].values())
+
+# x4, y4 = list(week_metrics['total_intermittent_energy_MWh'].keys()), list(week_metrics['total_intermittent_energy_MWh'].values())
+
+
+plt.clf()
+fig, ax1 = plt.subplots()
+
+l1, = ax1.semilogy(x1, y1, color='#f48f42', linewidth=1.1)
+l2, = ax1.semilogy(x2, y2, color='#963951', linewidth=1.1)
+ax2 = ax1.twinx()
+l3, = ax2.semilogy(x3, y3, color='#2bbc48', linewidth=1.1)
+
+ax1.legend([l1, l2, l3], ['Dispatchable energy', 'Intermittent energy', 'Emissions'], fontsize=8, ncol=2)
+ax1.set_ylabel('Energy (MWh)', fontsize=8)
+ax2.set_ylabel('Emissions (tCO$_\mathdefault{2}$)', fontsize=8)
+ax1.set_xlabel('Week', fontsize=8)
+ax1.set_ylim([5e3, 1e7])
+ax2.set_ylim([1e4, 1e8])
+
+minorLocator = MultipleLocator(2)
+majorLocator = MultipleLocator(10)
+
+ax1.xaxis.set_major_locator(majorLocator)
+ax1.xaxis.set_minor_locator(minorLocator)
+
+ax1.xaxis.set_tick_params(labelsize=8)
+ax1.yaxis.set_tick_params(labelsize=8)
+ax2.yaxis.set_tick_params(labelsize=8)
+
+# Set figure size
+width = 8.5
+height = 4.8
+cm_to_in = 0.393701
+fig.set_size_inches(width*cm_to_in, height*cm_to_in)
+fig.subplots_adjust(left=0.13, bottom=0.18, right=0.87, top=0.95, wspace=0.1)
+# plt.show()
+fname = 'benchmark.png'
+fig.savefig(f'output/{fname}', dpi=400)
+
+
+
+plt.show()
+
+
+# In[14]:
+
+
+week_metrics.keys()
 
