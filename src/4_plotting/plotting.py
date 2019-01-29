@@ -80,6 +80,9 @@ for index, row in run_summaries.iterrows():
     print(index, row['description'])
 
 
+# 7FAD8604 MPC update - revenue neutral - unanticipated emissions intensity shock - imperfect forecast
+# 1C0E7396 MPC update - revenue neutral - anticipated emissions intensity shock - imperfect forecast
+
 # In[6]:
 
 
@@ -391,7 +394,7 @@ x_b9, y_b9 = get_case_data(run_id=r9, series_name='baseline')
 x_r9, y_r9 = get_case_data(run_id=r9, series_name='rolling_scheme_revenue_interval_end')
 
 
-# In[40]:
+# In[23]:
 
 
 plt.clf()
@@ -399,10 +402,10 @@ plt.clf()
 fig = plt.figure()
 
 gs1 = gridspec.GridSpec(2, 2)
-gs1.update(left=0.05, right=0.48, wspace=0.05)
+gs1.update(left=0.07, right=0.48, top=0.95, wspace=0.05)
 
 gs2 = gridspec.GridSpec(2, 2)
-gs2.update(left=0.55, right=0.98, wspace=0.05)
+gs2.update(left=0.55, right=0.99, top=0.95, wspace=0.05)
 
 # Parameters
 # ----------
@@ -523,7 +526,7 @@ for ax in [ax2, ax6, ax8]:
     ax.plot([1, 52], [0, 0], **revenue_target_format)
 
 # Revenue ramp
-l4, = ax4.plot([1, 9, 19, 52], [0, 0, 10e6, 10e6], **revenue_target_format)
+l4, = ax4.plot([1, 9, 19, 52], [0, 0, 30e6, 30e6], **revenue_target_format)
 
 
 # Format ticks
@@ -541,7 +544,7 @@ for ax in [ax1, ax2, ax3, ax4, ax5, ax6, ax7, ax8]:
     
 # Format labels
 # -------------
-ax1.set_ylabel('Baseline (tCO$_{2}$/MWh)', fontsize=8)
+ax1.set_ylabel('Baseline (tCO$_{\mathdefault{2}}$/MWh)', fontsize=8)
 ax2.set_ylabel('Scheme revenue (\$)', fontsize=8)
 
 for ax in [ax2, ax4, ax6, ax8]:
@@ -590,303 +593,147 @@ cm_to_in = 0.393701
 fig.set_size_inches(width*cm_to_in, height*cm_to_in)
 
 # fig.subplots_adjust(left=0.07, bottom=0.135, right=0.99, top=0.98, wspace=0.2, hspace=0.2)
-fig.savefig('test.pdf')
-
+fig.savefig('test.png', dpi=800)
 
 plt.show()
 
 
-# In[32]:
+# Create table
+
+# In[9]:
 
 
-def create_baseline_revenue_figure(fname, 
-                                   rebalance_baseline_1,
-                                   rebalance_revenue_1,
-                                   mpc_baseline_1,
-                                   mpc_revenue_1,
-                                   rebalance_baseline_2,
-                                   rebalance_revenue_2,
-                                   mpc_baseline_2,
-                                   mpc_revenue_2,
-                                   emissions_intensity,
-                                   revenue_target_1=0,
-                                   revenue_target_2=0,
-                                   **kwargs):
+import numpy as np
+
+# BAU - no shocks
+mask = (run_summaries['shock_option'] == 'NO_SHOCKS') & (run_summaries['update_mode'] == 'NO_UPDATE') & (run_summaries['initial_permit_price'] == 0)
+if len(run_summaries[mask].index) != 1:
+    raise(Exception(f'Should only encounter 1 index, encountered:{run_summaries[mask].index}'))
+else:
+    r10 = run_summaries[mask].index[0]
     
-    "Consruct and format plot from given input signals"
+# BAU - emissions intensity shock
+mask = (run_summaries['shock_option'] == 'EMISSIONS_INTENSITY_SHOCK') & (run_summaries['update_mode'] == 'NO_UPDATE') & (run_summaries['initial_permit_price'] == 0)
+if len(run_summaries[mask].index) != 1:
+    raise(Exception(f'Should only encounter 1 index, encountered:{run_summaries[mask].index}'))
+else:
+    r11 = run_summaries[mask].index[0]
 
-    # Revenue rebalancing - first scenario
-    x1, y1 = rebalance_baseline_1
-    x2, y2 = mpc_baseline_1
-    x3, y3 = rebalance_revenue_1
-    x4, y4 = mpc_revenue_1
-    x5, y5 = rebalance_baseline_2
-    x6, y6 = mpc_baseline_2
-    x7, y7 = rebalance_revenue_2
-    x8, y8 = mpc_revenue_2
-    x9, y9 = emissions_intensity
 
+# Compute aggregate statistics for each case
+
+# In[10]:
+
+
+# Container for aggregate statistics
+table = []
+
+# Compute aggregate statistics for each run
+for r in [r0, r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11]:
     
-    # Colours
-    # -------
-    mpc_curve = '#e23653'
-    reb_curve = '#4f8bea'
-    emission_int = '#c6ba71'
-    rev_target = '#44433d'
+    # Import weekly metrics
+    with open(os.path.join(results_dir, f'{r}_week_metrics.pickle'), 'rb') as f:
+        week_metrics = pickle.load(f)
 
-    plt.clf()
+    # Import run summary for case
+    with open(os.path.join(results_dir, f'{r}_run_summary.pickle'), 'rb') as f:
+        run_summary = pickle.load(f)
 
-    # Initialise figure
-    fig, axs = plt.subplots(nrows=2, ncols=2, sharex='col', sharey='row')
+    # Dictionary to contain aggregate statistics for current case being investigated
+    output = {}
 
-    # First Series
-    # ------------
-    # Baselines
-    axs[0, 0].step(x1, y1, where='post', color=reb_curve, linewidth=1.1) # Revenue re-balance baseline
-    axs[0, 0].step(x2, y2, where='post', color=mpc_curve, linewidth=1.1) # MPC update baseline
+    # Average weekly energy price
+    _, average_energy_price = get_case_data(r, 'average_energy_price')
+    output['average_energy_price'] = f'{np.mean(average_energy_price):.2f} ({np.std(average_energy_price):.2f})'
+
+    # Emissions (total)
+    _, total_emissions_tCO2 = get_case_data(r, 'total_emissions_tCO2')
+    output['total_emissions_tCO2'] = f'{np.sum(total_emissions_tCO2)/1e6:.2f}'
+
+    # Baseline (weekly average)
+    _, baseline = get_case_data(r, 'baseline')
+    output['baseline'] = f'{np.mean(baseline):.3f} ({np.std(baseline):.3f})'
+
+    # Difference between scheme revenue and target
+    try:
+        if run_summary[r]['update_mode'] == 'MPC_UPDATE':
+            # Total model horizon
+            model_horizon = run_summary[r]['model_horizon']
+
+            # Length of MPC forecast interval
+            forecast_interval_mpc = run_summary[r]['forecast_interval_mpc']
+
+            # Target scheme revenue used in model
+            target_scheme_revenue_dict = run_summary[r]['target_scheme_revenue']
+
+            # Flatten to dict with single key-value pairs
+            target_scheme_revenue = {**{i: j[1] for i, j in target_scheme_revenue_dict.items()},
+                                     **{model_horizon-forecast_interval_mpc+i: target_scheme_revenue_dict[model_horizon-forecast_interval_mpc+1][i]
+                                        for i in range(1, forecast_interval_mpc+1)}
+                                    }
+
+        elif run_summary[r]['update_mode'] == 'REVENUE_REBALANCE_UPDATE':
+            # Only a single forecast for rebalancing update
+            target_scheme_revenue = {i: j[1] for i, j in run_summary[r]['target_scheme_revenue'].items()}
+
+        # Compute difference between accrued scheme revenue and target for each week
+        revenue_difference = pd.Series(target_scheme_revenue).subtract(pd.Series(week_metrics['rolling_scheme_revenue_interval_end']))
+
+        # Add to dictionary
+        output['revenue_difference'] = f'{revenue_difference.mean()/1e6:.2f} ({revenue_difference.div(1e6).std():.2f})'
+
+    except:
+        output['revenue_difference'] = '-'
+
+    # Type of shock
+    output['shock_option'] = run_summary[r]['shock_option']
     
-    if 'ylim_1'in kwargs:
-        axs[0, 0].set_ylim(kwargs['ylim_1'])
+    # Model description
+    output['description'] = run_summary[r]['description']
     
-    # Scheme revenue
-    axs[1, 0].plot(x3, [i/1e6 for i in y3], color=reb_curve, linewidth=1.1) # Revenue rebalance scheme revenue
-    axs[1, 0].plot(x4, [i/1e6 for i in y4], color=mpc_curve, linewidth=1.1) # MPC update scheme revenue
-    
-    if 'ylim_2'in kwargs:
-        axs[1, 0].set_ylim(kwargs['ylim_2'])
-    
-    # Second series
-    # -------------
-    # Baselines
-    axs[0, 1].step(x5, y5, where='post', color=reb_curve, linewidth=1.1) # Revenue rebalance - revenue target - baseline
-    axs[0, 1].step(x6, y6, where='post', color=mpc_curve, linewidth=1.1) # MPC update - revenue target - baseline
-    
-    # Scheme revenue
-    l1, = axs[1, 1].plot(x7, [i/1e6 for i in y7], color=reb_curve, label='Revenue rebalancing', linewidth=1.1) # Revenue rebalance - revenue target - scheme revenue
-    l2, = axs[1, 1].plot(x8, [i/1e6 for i in y8], color=mpc_curve, label='MPC update', linewidth=1.1) # MPC update - revenue target - scheme revenue
+    # Model run ID
+    output['run_id'] = r
 
-    
-    
-    
-    # Other
-    # -----
-    # Emissions intensity
-    axs[0, 0].plot(x9, y9, color=emission_int, linewidth=1.1)
-    l3, = axs[0, 1].plot(x9, y9, color=emission_int, label='Emissions intensity', linewidth=1.1)
-
-    # Revenue targets
-    axs[1, 0].plot([x1[0], x1[-1]], [revenue_target_1, revenue_target_1], color=rev_target, linestyle='--', linewidth=0.9)
-    l4, = axs[1, 1].plot([x9[0], x9[-1]], [revenue_target_2, revenue_target_2], color=rev_target, linestyle='--', linewidth=0.9, label='Revenue target')
-
-    # Week of shock
-    if 'week_of_shock' in kwargs:
-        axs[1, 0].plot([kwargs['week_of_shock'], kwargs['week_of_shock']], [-50, 50], color='#399656', linestyle='-.', linewidth=0.9)
-        axs[0, 0].plot([kwargs['week_of_shock'], kwargs['week_of_shock']], [-50, 50], color='#399656', linestyle='-.', linewidth=0.9)
-        axs[0, 1].plot([kwargs['week_of_shock'], kwargs['week_of_shock']], [-50, 50], color='#399656', linestyle='-.', linewidth=0.9)
-        axs[1, 1].plot([kwargs['week_of_shock'], kwargs['week_of_shock']], [-50, 50], color='#399656', linestyle='-.', linewidth=0.9)
-
-    # Format axes
-    # -----------
-    # Turn on minor ticks
-    axs[0, 0].minorticks_on()
-    axs[1, 0].minorticks_on()
-    axs[1, 1].minorticks_on()
-
-    # Axes labels
-    axs[0, 0].set_ylabel('Baseline (tCO$_\mathdefault{2}$/MWh)', fontsize=8)
-    axs[0, 0].set_xlabel('(a)', fontsize=8)
-    axs[0, 1].set_xlabel('(b)', fontsize=8)
-    axs[1, 0].set_ylabel('Revenue (\$ 10$^\mathdefault{6}$)', fontsize=8)
-    axs[1, 0].set_xlabel('(c)\nWeek', fontsize=8, labelpad=-2)
-    axs[1, 0].xaxis.set_tick_params(labelsize=8)
-    axs[0, 0].yaxis.set_tick_params(labelsize=8)
-    axs[1, 0].yaxis.set_tick_params(labelsize=8)
-    axs[1, 1].set_xlabel('(d)\nWeek', fontsize=8, labelpad=-2)
-    axs[1, 1].xaxis.set_tick_params(labelsize=8)
-
-    minorLocator = MultipleLocator(2)
-    majorLocator = MultipleLocator(10)
-
-    axs[1, 0].xaxis.set_major_locator(majorLocator)
-    axs[1, 0].xaxis.set_minor_locator(minorLocator)
-
-    axs[1, 1].xaxis.set_major_locator(majorLocator)
-    axs[1, 1].xaxis.set_minor_locator(minorLocator)
-
-    # Legend
-    axs[1, 1].legend([l1, l2, l3, l4], ['Revenue rebalance', 'MPC update', 'Emissions intensity', 'Revenue target'], fontsize=7)
-
-    # Set figure size
-    width = 17.8
-    height = 8.8
-    cm_to_in = 0.393701
-    fig.set_size_inches(width*cm_to_in, height*cm_to_in)
-    fig.subplots_adjust(left=0.07, bottom=0.135, right=0.99, top=0.98, wspace=0.1)
-    plt.show()
-
-    fig.savefig(f'output/{fname}', dpi=400)
+    # Append to main container
+    table.append(output)
 
 
-# In[ ]:
+# Create tables to be used in manuscript
+
+# In[11]:
 
 
-# Comparison between revenue neutral and revenue targeting objectives
-create_baseline_revenue_figure(fname='revenue_neutral_and_revenue_target.png',
-                               rebalance_baseline_1=(x_b1, y_b1),
-                               rebalance_revenue_1=(x_r1, y_r1),
-                               mpc_baseline_1=(x_b2, y_b2),
-                               mpc_revenue_1=(x_r2, y_r2),
-                               rebalance_baseline_2=(x_b3, y_b3),
-                               rebalance_revenue_2=(x_r3, y_r3),
-                               mpc_baseline_2=(x_b4, y_b4),
-                               mpc_revenue_2=(x_r4, y_r4),
-                               emissions_intensity=(x_e0, y_e0),
-                               revenue_target_2=10)
+# Construct table containing aggregated statistics
+df_table = pd.DataFrame(table)
 
+# Map case description to tuple which will define new index
+description_map = {'carbon tax - no shocks': ('Carbon tax', 'No shock'),
+                   'Revenue rebalance update - revenue neutral - no shocks - imperfect forecast': ('Revenue neutral', 'RR'),
+                   'MPC update - revenue neutral - no shocks - imperfect forecast': ('Revenue neutral', 'MPC'),
+                   'Revenue rebalance update - positive revenue target - no shocks - imperfect forecast': ('Revenue target', 'RR'),
+                   'MPC update - positive revenue target - no shocks - imperfect forecast': ('Revenue target', 'MPC'),
+                   'business as usual - no shocks': ('BAU', 'No shock'),
+                   'carbon tax - emissions intensity shock': ('Carbon tax', 'shock'),
+                   'Revenue rebalance update - revenue neutral - anticipated emissions intensity shock - imperfect forecast': ('Anticipated', 'RR'),
+                   'MPC update - revenue neutral - anticipated emissions intensity shock - imperfect forecast': ('Anticipated', 'MPC'),
+                   'Revenue rebalance update - revenue neutral - unanticipated emissions intensity shock - imperfect forecast': ('Unanticipated', 'RR'),
+                   'MPC update - revenue neutral - unanticipated emissions intensity shock - imperfect forecast': ('Unanticipated', 'MPC'),
+                   'business as usual - emissions intensity shock': ('BAU', 'shock'),
+                  }
 
-# In[ ]:
+# Get new index based on case description
+df_table[['new_index_1', 'new_index_2']] = df_table.apply(lambda x: pd.Series(description_map[x['description']]) if x['description'] in description_map.keys() else pd.Series((10, 20)), axis=1)
 
+# Revenue target results
+mask = ['average_energy_price', 'total_emissions_tCO2', 'baseline', 'revenue_difference']
+cols = [('BAU', 'No shock'), ('Carbon tax', 'No shock'), ('Revenue neutral', 'RR'), ('Revenue neutral', 'MPC'), ('Revenue target', 'RR'), ('Revenue target', 'MPC')]
+new_index = {'average_energy_price': 'Average price ($/MWh)', 'baseline': 'Baseline (tCO2/MWh)', 'revenue_difference': 'Revenue - Target (million $)', 'total_emissions_tCO2': 'Emissions (MtCO2)'}
+df1 = df_table.set_index(['new_index_1', 'new_index_2']).T.reindex(mask).loc[:, cols].rename(index=new_index)
+df1.to_csv('table_1.csv')
 
-# # Emissions intensity
-# # -------------------
-# # Run ID
-# r0 = get_case_run_id_by_description(description='carbon tax - emissions intensity shock')
-
-# # Baseline
-# x_e0, y_e0 = get_case_data(run_id=r0, series_name='average_emissions_intensity_regulated_generators')
-
-
-# # Revenue neutral case - no shocks - revenue re-balancing update
-# # --------------------------------------------------------------
-# # Run ID
-# r1 = get_case_run_id(update_mode='REVENUE_REBALANCE_UPDATE', shock_option='EMISSIONS_INTENSITY_SHOCK', anticipated_shock=True, 
-#                      forecast_uncertainty_increment=0.05, revenue_neutral=True, renewables_eligible=False)
-# # Baseline
-# x_b1, y_b1 = get_case_data(run_id=r1, series_name='baseline')
-
-# # Rolling scheme revenue
-# x_r1, y_r1 = get_case_data(run_id=r1, series_name='rolling_scheme_revenue_interval_end')
-
-
-# # Revenue neutral case - no shocks - MPC
-# # --------------------------------------
-# # Run ID
-# r2 = get_case_run_id(update_mode='MPC_UPDATE', shock_option='EMISSIONS_INTENSITY_SHOCK', anticipated_shock=True, 
-#                      forecast_uncertainty_increment=0.05, revenue_neutral=True, renewables_eligible=False)
-# # Baseline
-# x_b2, y_b2 = get_case_data(run_id=r2, series_name='baseline')
-
-# # Rolling scheme revenue
-# x_r2, y_r2 = get_case_data(run_id=r2, series_name='rolling_scheme_revenue_interval_end')
-
-
-
-# # Revenue target case - no shocks - revenue re-balancing update
-# # --------------------------------------------------------------
-# # Run ID
-# r3 = get_case_run_id(update_mode='REVENUE_REBALANCE_UPDATE', shock_option='EMISSIONS_INTENSITY_SHOCK', anticipated_shock=False, 
-#                      forecast_uncertainty_increment=0.05, revenue_neutral=True, renewables_eligible=False)
-# # Baseline
-# x_b3, y_b3 = get_case_data(run_id=r3, series_name='baseline')
-
-# # Rolling scheme revenue
-# x_r3, y_r3 = get_case_data(run_id=r3, series_name='rolling_scheme_revenue_interval_end')
-
-
-# # Revenue target case - no shocks - MPC
-# # --------------------------------------
-# # Run ID
-# r4 = get_case_run_id(update_mode='MPC_UPDATE', shock_option='EMISSIONS_INTENSITY_SHOCK', anticipated_shock=False, 
-#                      forecast_uncertainty_increment=0.05, revenue_neutral=True, renewables_eligible=False)
-# # Baseline
-# x_b4, y_b4 = get_case_data(run_id=r4, series_name='baseline')
-
-# # Rolling scheme revenue
-# x_r4, y_r4 = get_case_data(run_id=r4, series_name='rolling_scheme_revenue_interval_end')
-
-
-# In[ ]:
-
-
-create_baseline_revenue_figure(fname='anticipated_and_unanticipated_emissions_intensity_shock.png',
-                               rebalance_baseline_1=(x_b1, y_b1),
-                               rebalance_revenue_1=(x_r1, y_r1),
-                               mpc_baseline_1=(x_b2, y_b2),
-                               mpc_revenue_1=(x_r2, y_r2),
-                               rebalance_baseline_2=(x_b3, y_b3),
-                               rebalance_revenue_2=(x_r3, y_r3),
-                               mpc_baseline_2=(x_b4, y_b4),
-                               mpc_revenue_2=(x_r4, y_r4),
-                               emissions_intensity=(x_e0, y_e0),
-                               revenue_target_2=0,
-                               ylim_1=[0.8, 1.05],
-                               ylim_2=[-27, 27])
-
-
-# Business as usual case
-
-# In[ ]:
-
-
-# r1 = 
-r1 = get_case_run_id_by_description('business as usual')
-
-with open(os.path.join(results_dir, f'{r1}_week_metrics.pickle'), 'rb') as f:
-    week_metrics = pickle.load(f)
-
-
-# In[ ]:
-
-
-x1, y1 = list(week_metrics['total_dispatchable_generator_energy_MWh'].keys()), list(week_metrics['total_dispatchable_generator_energy_MWh'].values())
-x2, y2 = list(week_metrics['total_intermittent_energy_MWh'].keys()), list(week_metrics['total_intermittent_energy_MWh'].values())
-x3, y3 = list(week_metrics['total_emissions_tCO2'].keys()), list(week_metrics['total_emissions_tCO2'].values())
-
-# x4, y4 = list(week_metrics['total_intermittent_energy_MWh'].keys()), list(week_metrics['total_intermittent_energy_MWh'].values())
-
-
-plt.clf()
-fig, ax1 = plt.subplots()
-
-l1, = ax1.semilogy(x1, y1, color='#f48f42', linewidth=1.1)
-l2, = ax1.semilogy(x2, y2, color='#963951', linewidth=1.1)
-ax2 = ax1.twinx()
-l3, = ax2.semilogy(x3, y3, color='#2bbc48', linewidth=1.1)
-
-ax1.legend([l1, l2, l3], ['Dispatchable energy', 'Intermittent energy', 'Emissions'], fontsize=8, ncol=2)
-ax1.set_ylabel('Energy (MWh)', fontsize=8)
-ax2.set_ylabel('Emissions (tCO$_\mathdefault{2}$)', fontsize=8)
-ax1.set_xlabel('Week', fontsize=8)
-ax1.set_ylim([5e3, 1e7])
-ax2.set_ylim([1e4, 1e8])
-
-minorLocator = MultipleLocator(2)
-majorLocator = MultipleLocator(10)
-
-ax1.xaxis.set_major_locator(majorLocator)
-ax1.xaxis.set_minor_locator(minorLocator)
-
-ax1.xaxis.set_tick_params(labelsize=8)
-ax1.yaxis.set_tick_params(labelsize=8)
-ax2.yaxis.set_tick_params(labelsize=8)
-
-# Set figure size
-width = 8.5
-height = 4.8
-cm_to_in = 0.393701
-fig.set_size_inches(width*cm_to_in, height*cm_to_in)
-fig.subplots_adjust(left=0.13, bottom=0.18, right=0.87, top=0.95, wspace=0.1)
-# plt.show()
-fname = 'benchmark.png'
-fig.savefig(f'output/{fname}', dpi=400)
-
-
-
-plt.show()
-
-
-# In[ ]:
-
-
-week_metrics.keys()
+# Emissions intensity shock results
+cols = [('BAU', 'shock'), ('Carbon tax', 'shock'), ('Anticipated', 'RR'), ('Anticipated', 'MPC'), ('Unanticipated', 'RR'), ('Unanticipated', 'MPC')]
+new_index = {'average_energy_price': 'Average price ($/MWh)', 'baseline': 'Baseline (tCO2/MWh)', 'revenue_difference': 'Revenue - Target (million $)', 'total_emissions_tCO2': 'Emissions (MtCO2)'}
+df2 = df_table.set_index(['new_index_1', 'new_index_2']).T.reindex(mask).loc[:, cols].rename(index=new_index)
+df2.to_csv('table_2.csv')
 

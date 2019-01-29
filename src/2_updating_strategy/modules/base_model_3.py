@@ -919,7 +919,7 @@ def run_model(data_dir,
 
     # Augment original emissions intensity by random scaling factor between 0.8 and 1
     if shock_option == 'EMISSIONS_INTENSITY_SHOCK':
-        df_emissions_intensity_shock_factor = pd.Series(index=DCOPF.model.OMEGA_G, data=np.random.uniform(0.8, 1, len(DCOPF.model.OMEGA_G)))
+        df_emissions_intensity_shock_factor = pd.Series(index=sorted(DCOPF.model.OMEGA_G), data=np.random.uniform(0.8, 1, len(DCOPF.model.OMEGA_G)))
 
 
     # Run scenarios
@@ -1542,7 +1542,7 @@ forecast_intervals_mpc = 6
 
 # Default baseline. (Will be used as baseline in the interval preceding the
 # first forecast interval when implementing MPC updates)
-default_baseline = 1
+default_baseline = 1.0228
 
 # Rolling scheme revenue at scheme start
 initial_rolling_scheme_revenue = 0
@@ -1582,7 +1582,7 @@ for key, value in revenue_neutral_target.items():
     
     # Ramp scheme revenue by the same increment following for 
     elif (key >= week_of_shock) and (key < week_of_shock + revenue_ramp_intervals):
-        positive_revenue_target[key] = positive_revenue_target[key-1] + 1e6
+        positive_revenue_target[key] = positive_revenue_target[key-1] + revenue_ramp_increment
     
     # Maintain rolling scheme revenue at new level
     else:
@@ -1607,68 +1607,90 @@ renewables_become_eligible = {i: False if i < renewables_eligible_week_start els
 # In[7]:
 
 
-# # Business-as-usual case
-# run_model(data_dir=data_dir, 
-#           scenarios_dir=scenarios_dir, 
-#           shock_option='NO_SHOCKS', 
-#           update_mode='NO_UPDATE', 
-#           description='business as usual',
-#           intermittent_generators_regulated=None,
-#           forecast_generator_emissions_intensity=None,
-#           forecast_generator_energy=None,
-#           forecast_intermittent_generator_energy=None,
-#           forecast_uncertainty_increment=None,
-#           forecast_interval_mpc=None,
-#           forecast_shock=None,
-#           week_of_shock=None,
-#           default_baseline=0,
-#           initial_permit_price=0,
-#           initial_rolling_scheme_revenue=0,
-#           target_scheme_revenue=None,
-#           seed=seed,
-#           model_horizon=model_horizon)
+# Business-as-usual case - no shocks
+run_model(data_dir=data_dir, 
+          scenarios_dir=scenarios_dir, 
+          shock_option='NO_SHOCKS', 
+          update_mode='NO_UPDATE', 
+          description='business as usual - no shocks',
+          intermittent_generators_regulated=None,
+          forecast_generator_emissions_intensity=None,
+          forecast_generator_energy=None,
+          forecast_intermittent_generator_energy=None,
+          forecast_uncertainty_increment=None,
+          forecast_interval_mpc=None,
+          forecast_shock=None,
+          week_of_shock=None,
+          default_baseline=0,
+          initial_permit_price=0,
+          initial_rolling_scheme_revenue=0,
+          target_scheme_revenue=None,
+          seed=seed,
+          model_horizon=model_horizon)
 
-# # Carbon tax - no shocks
-# run_model(data_dir=data_dir, 
-#           scenarios_dir=scenarios_dir, 
-#           shock_option='NO_SHOCKS', 
-#           update_mode='NO_UPDATE', 
-#           description='carbon tax - no shocks',
-#           intermittent_generators_regulated=None,
-#           forecast_generator_emissions_intensity=None,
-#           forecast_generator_energy=None,
-#           forecast_intermittent_generator_energy=None,
-#           forecast_uncertainty_increment=None,
-#           forecast_interval_mpc=None,
-#           forecast_shock=None,
-#           week_of_shock=None,
-#           default_baseline=0,
-#           initial_permit_price=initial_permit_price,
-#           initial_rolling_scheme_revenue=0,
-#           target_scheme_revenue=None,
-#           seed=seed,
-#           model_horizon=model_horizon)
+# Business-as-usual case - emissions intensity shock
+run_model(data_dir=data_dir, 
+          scenarios_dir=scenarios_dir, 
+          shock_option='EMISSIONS_INTENSITY_SHOCK', 
+          update_mode='NO_UPDATE', 
+          description='business as usual - emissions intensity shock',
+          intermittent_generators_regulated=None,
+          forecast_generator_emissions_intensity=None,
+          forecast_generator_energy=None,
+          forecast_intermittent_generator_energy=None,
+          forecast_uncertainty_increment=None,
+          forecast_interval_mpc=None,
+          forecast_shock=None,
+          week_of_shock=week_of_shock,
+          default_baseline=0,
+          initial_permit_price=0,
+          initial_rolling_scheme_revenue=0,
+          target_scheme_revenue=None,
+          seed=seed,
+          model_horizon=model_horizon)
 
-# # Carbon tax - emissions intensity shock
-# run_model(data_dir=data_dir, 
-#           scenarios_dir=scenarios_dir, 
-#           shock_option='EMISSIONS_INTENSITY_SHOCK', 
-#           update_mode='NO_UPDATE', 
-#           description='carbon tax - emissions intensity shock',
-#           intermittent_generators_regulated=None,
-#           forecast_generator_emissions_intensity=None,
-#           forecast_generator_energy=None,
-#           forecast_intermittent_generator_energy=None,
-#           forecast_uncertainty_increment=None,
-#           forecast_interval_mpc=None,
-#           forecast_shock=None,
-#           week_of_shock=week_of_shock,
-#           default_baseline=0,
-#           initial_permit_price=initial_permit_price,
-#           initial_rolling_scheme_revenue=0,
-#           target_scheme_revenue=None,
-#           seed=seed,
-#           model_horizon=model_horizon)
+
+# Carbon tax - no shocks
+run_model(data_dir=data_dir, 
+          scenarios_dir=scenarios_dir, 
+          shock_option='NO_SHOCKS', 
+          update_mode='NO_UPDATE', 
+          description='carbon tax - no shocks',
+          intermittent_generators_regulated=None,
+          forecast_generator_emissions_intensity=None,
+          forecast_generator_energy=None,
+          forecast_intermittent_generator_energy=None,
+          forecast_uncertainty_increment=None,
+          forecast_interval_mpc=None,
+          forecast_shock=None,
+          week_of_shock=None,
+          default_baseline=0,
+          initial_permit_price=initial_permit_price,
+          initial_rolling_scheme_revenue=0,
+          target_scheme_revenue=None,
+          seed=seed,
+          model_horizon=model_horizon)
+
+# Carbon tax - emissions intensity shock
+run_model(data_dir=data_dir, 
+          scenarios_dir=scenarios_dir, 
+          shock_option='EMISSIONS_INTENSITY_SHOCK', 
+          update_mode='NO_UPDATE', 
+          description='carbon tax - emissions intensity shock',
+          intermittent_generators_regulated=None,
+          forecast_generator_emissions_intensity=None,
+          forecast_generator_energy=None,
+          forecast_intermittent_generator_energy=None,
+          forecast_uncertainty_increment=None,
+          forecast_interval_mpc=None,
+          forecast_shock=None,
+          week_of_shock=week_of_shock,
+          default_baseline=0,
+          initial_permit_price=initial_permit_price,
+          initial_rolling_scheme_revenue=0,
+          target_scheme_revenue=None,
+          seed=seed,
+          model_horizon=model_horizon)
 
 
 # Summarise results for benchmark cases
@@ -1718,109 +1740,109 @@ run_summaries = pd.DataFrame.from_dict(get_run_summaries(results_dir), orient='i
 
 
 cases = {# Perfect forecasts - no shocks
-#         'Revenue rebalance update - positive_revenue_target - no shocks - perfect forecast': 
-#          {'shock_option': 'NO_SHOCKS',
-#           'update_mode': 'REVENUE_REBALANCE_UPDATE',
-#           'week_of_shock': None,
-#           'forecast_intervals': forecast_intervals_revenue_rebalance,
-#           'forecast_uncertainty_increment': 0,
-#           'weekly_target_scheme_revenue': positive_revenue_target,
-#           'renewables_eligibility': renewables_ineligible,
-#           'forecast_shock': False},
+        'Revenue rebalance update - positive_revenue_target - no shocks - perfect forecast': 
+         {'shock_option': 'NO_SHOCKS',
+          'update_mode': 'REVENUE_REBALANCE_UPDATE',
+          'week_of_shock': None,
+          'forecast_intervals': forecast_intervals_revenue_rebalance,
+          'forecast_uncertainty_increment': 0,
+          'weekly_target_scheme_revenue': positive_revenue_target,
+          'renewables_eligibility': renewables_ineligible,
+          'forecast_shock': False},
     
-#          'MPC update - revenue neutral - no shocks - perfect forecast': 
-#          {'shock_option': 'NO_SHOCKS',
-#           'update_mode': 'MPC_UPDATE',
-#           'week_of_shock': None,
-#           'forecast_intervals': forecast_intervals_mpc,
-#           'forecast_uncertainty_increment': 0,
-#           'weekly_target_scheme_revenue': positive_revenue_target,
-#           'renewables_eligibility': renewables_ineligible,
-#           'forecast_shock': False},    
+         'MPC update - revenue neutral - no shocks - perfect forecast': 
+         {'shock_option': 'NO_SHOCKS',
+          'update_mode': 'MPC_UPDATE',
+          'week_of_shock': None,
+          'forecast_intervals': forecast_intervals_mpc,
+          'forecast_uncertainty_increment': 0,
+          'weekly_target_scheme_revenue': positive_revenue_target,
+          'renewables_eligibility': renewables_ineligible,
+          'forecast_shock': False},    
          
-#          # Perfect forecast - emissions intensity shock
-#          'Revenue rebalance update - positive_revenue_target - emissions intensity shock - perfect forecast': 
-#          {'shock_option': 'EMISSIONS_INTENSITY_SHOCK',
-#           'update_mode': 'REVENUE_REBALANCE_UPDATE',
-#           'week_of_shock': week_of_shock,
-#           'forecast_intervals': forecast_intervals_revenue_rebalance,
-#           'forecast_uncertainty_increment': 0,
-#           'weekly_target_scheme_revenue': positive_revenue_target,
-#           'renewables_eligibility': renewables_ineligible,
-#           'forecast_shock': False},
+         # Perfect forecast - emissions intensity shock
+         'Revenue rebalance update - positive_revenue_target - emissions intensity shock - perfect forecast': 
+         {'shock_option': 'EMISSIONS_INTENSITY_SHOCK',
+          'update_mode': 'REVENUE_REBALANCE_UPDATE',
+          'week_of_shock': week_of_shock,
+          'forecast_intervals': forecast_intervals_revenue_rebalance,
+          'forecast_uncertainty_increment': 0,
+          'weekly_target_scheme_revenue': positive_revenue_target,
+          'renewables_eligibility': renewables_ineligible,
+          'forecast_shock': False},
     
-#          'MPC update - positive_revenue_target - emissions intensity shock - perfect forecast': 
-#          {'shock_option': 'EMISSIONS_INTENSITY_SHOCK',
-#           'update_mode': 'MPC_UPDATE',
-#           'week_of_shock': week_of_shock,
-#           'forecast_intervals': forecast_intervals_mpc,
-#           'forecast_uncertainty_increment': 0,
-#           'weekly_target_scheme_revenue': positive_revenue_target,
-#           'renewables_eligibility': renewables_ineligible,
-#           'forecast_shock': False},    
+         'MPC update - positive_revenue_target - emissions intensity shock - perfect forecast': 
+         {'shock_option': 'EMISSIONS_INTENSITY_SHOCK',
+          'update_mode': 'MPC_UPDATE',
+          'week_of_shock': week_of_shock,
+          'forecast_intervals': forecast_intervals_mpc,
+          'forecast_uncertainty_increment': 0,
+          'weekly_target_scheme_revenue': positive_revenue_target,
+          'renewables_eligibility': renewables_ineligible,
+          'forecast_shock': False},    
     
-#         # Revenue neutral
-#         'Revenue rebalance update - revenue neutral - no shocks - imperfect forecast': 
-#          {'shock_option': 'NO_SHOCKS',
-#           'update_mode': 'REVENUE_REBALANCE_UPDATE',
-#           'week_of_shock': None,
-#           'forecast_intervals': forecast_intervals_revenue_rebalance,
-#           'forecast_uncertainty_increment': forecast_uncertainty_increment,
-#           'weekly_target_scheme_revenue': revenue_neutral_target,
-#           'renewables_eligibility': renewables_ineligible,
-#           'forecast_shock': False},
+        # Revenue neutral
+        'Revenue rebalance update - revenue neutral - no shocks - imperfect forecast': 
+         {'shock_option': 'NO_SHOCKS',
+          'update_mode': 'REVENUE_REBALANCE_UPDATE',
+          'week_of_shock': None,
+          'forecast_intervals': forecast_intervals_revenue_rebalance,
+          'forecast_uncertainty_increment': forecast_uncertainty_increment,
+          'weekly_target_scheme_revenue': revenue_neutral_target,
+          'renewables_eligibility': renewables_ineligible,
+          'forecast_shock': False},
          
-#          'MPC update - revenue neutral - no shocks - imperfect forecast': 
-#          {'shock_option': 'NO_SHOCKS',
-#           'update_mode': 'MPC_UPDATE',
-#           'week_of_shock': None,
-#           'forecast_intervals': forecast_intervals_mpc,
-#           'forecast_uncertainty_increment': forecast_uncertainty_increment,
-#           'weekly_target_scheme_revenue': revenue_neutral_target,
-#           'renewables_eligibility': renewables_ineligible,
-#           'forecast_shock': False},
+         'MPC update - revenue neutral - no shocks - imperfect forecast': 
+         {'shock_option': 'NO_SHOCKS',
+          'update_mode': 'MPC_UPDATE',
+          'week_of_shock': None,
+          'forecast_intervals': forecast_intervals_mpc,
+          'forecast_uncertainty_increment': forecast_uncertainty_increment,
+          'weekly_target_scheme_revenue': revenue_neutral_target,
+          'renewables_eligibility': renewables_ineligible,
+          'forecast_shock': False},
          
-#          # Positive scheme revenue target
-#          'Revenue rebalance update - positive revenue target - no shocks - imperfect forecast': 
-#          {'shock_option': 'NO_SHOCKS',
-#           'update_mode': 'REVENUE_REBALANCE_UPDATE',
-#           'week_of_shock': None,
-#           'forecast_intervals': forecast_intervals_revenue_rebalance,
-#           'forecast_uncertainty_increment': forecast_uncertainty_increment,
-#           'weekly_target_scheme_revenue': positive_revenue_target,
-#           'renewables_eligibility': renewables_ineligible,
-#           'forecast_shock': False},
+         # Positive scheme revenue target
+         'Revenue rebalance update - positive revenue target - no shocks - imperfect forecast': 
+         {'shock_option': 'NO_SHOCKS',
+          'update_mode': 'REVENUE_REBALANCE_UPDATE',
+          'week_of_shock': None,
+          'forecast_intervals': forecast_intervals_revenue_rebalance,
+          'forecast_uncertainty_increment': forecast_uncertainty_increment,
+          'weekly_target_scheme_revenue': positive_revenue_target,
+          'renewables_eligibility': renewables_ineligible,
+          'forecast_shock': False},
          
-#          'MPC update - positive revenue target - no shocks - imperfect forecast': 
-#          {'shock_option': 'NO_SHOCKS',
-#           'update_mode': 'MPC_UPDATE',
-#           'week_of_shock': None,
-#           'forecast_intervals': forecast_intervals_mpc,
-#           'forecast_uncertainty_increment': forecast_uncertainty_increment,
-#           'weekly_target_scheme_revenue': positive_revenue_target,
-#           'renewables_eligibility': renewables_ineligible,
-#           'forecast_shock': False},
+         'MPC update - positive revenue target - no shocks - imperfect forecast': 
+         {'shock_option': 'NO_SHOCKS',
+          'update_mode': 'MPC_UPDATE',
+          'week_of_shock': None,
+          'forecast_intervals': forecast_intervals_mpc,
+          'forecast_uncertainty_increment': forecast_uncertainty_increment,
+          'weekly_target_scheme_revenue': positive_revenue_target,
+          'renewables_eligibility': renewables_ineligible,
+          'forecast_shock': False},
          
-#          # Anticipated emissions intensity shock
-#          'Revenue rebalance update - revenue neutral - anticipated emissions intensity shock - imperfect forecast':
-#           {'shock_option': 'EMISSIONS_INTENSITY_SHOCK',
-#           'update_mode': 'REVENUE_REBALANCE_UPDATE',
-#           'week_of_shock': week_of_shock,
-#           'forecast_intervals': forecast_intervals_revenue_rebalance,
-#           'forecast_uncertainty_increment': forecast_uncertainty_increment,
-#           'weekly_target_scheme_revenue': revenue_neutral_target,
-#           'renewables_eligibility': renewables_ineligible,
-#           'forecast_shock': False},
+         # Anticipated emissions intensity shock
+         'Revenue rebalance update - revenue neutral - anticipated emissions intensity shock - imperfect forecast':
+          {'shock_option': 'EMISSIONS_INTENSITY_SHOCK',
+          'update_mode': 'REVENUE_REBALANCE_UPDATE',
+          'week_of_shock': week_of_shock,
+          'forecast_intervals': forecast_intervals_revenue_rebalance,
+          'forecast_uncertainty_increment': forecast_uncertainty_increment,
+          'weekly_target_scheme_revenue': revenue_neutral_target,
+          'renewables_eligibility': renewables_ineligible,
+          'forecast_shock': False},
          
-#          'MPC update - revenue neutral - anticipated emissions intensity shock - imperfect forecast':
-#           {'shock_option': 'EMISSIONS_INTENSITY_SHOCK',
-#           'update_mode': 'MPC_UPDATE',
-#           'week_of_shock': week_of_shock,
-#           'forecast_intervals': forecast_intervals_mpc,
-#           'forecast_uncertainty_increment': forecast_uncertainty_increment,
-#           'weekly_target_scheme_revenue': revenue_neutral_target,
-#           'renewables_eligibility': renewables_ineligible,
-#           'forecast_shock': False},
+         'MPC update - revenue neutral - anticipated emissions intensity shock - imperfect forecast':
+          {'shock_option': 'EMISSIONS_INTENSITY_SHOCK',
+          'update_mode': 'MPC_UPDATE',
+          'week_of_shock': week_of_shock,
+          'forecast_intervals': forecast_intervals_mpc,
+          'forecast_uncertainty_increment': forecast_uncertainty_increment,
+          'weekly_target_scheme_revenue': revenue_neutral_target,
+          'renewables_eligibility': renewables_ineligible,
+          'forecast_shock': False},
          
          # Unanticipated emissions intensity shock
          'Revenue rebalance update - revenue neutral - unanticipated emissions intensity shock - imperfect forecast':
@@ -1843,26 +1865,26 @@ cases = {# Perfect forecasts - no shocks
           'renewables_eligibility': renewables_ineligible,
           'forecast_shock': True},
     
-#          # Renewables become eligible for payments under scheme
-#          'Revenue rebalance update - revenue neutral - intermittent renewables become eligible - imperfect forecast':
-#           {'shock_option': 'NO_SHOCKS',
-#           'update_mode': 'REVENUE_REBALANCE_UPDATE',
-#           'week_of_shock': week_of_shock,
-#           'forecast_intervals': forecast_intervals_revenue_rebalance,
-#           'forecast_uncertainty_increment': forecast_uncertainty_increment,
-#           'weekly_target_scheme_revenue': revenue_neutral_target,
-#           'renewables_eligibility': renewables_become_eligible,
-#           'forecast_shock': False},
+         # Renewables become eligible for payments under scheme
+         'Revenue rebalance update - revenue neutral - intermittent renewables become eligible - imperfect forecast':
+          {'shock_option': 'NO_SHOCKS',
+          'update_mode': 'REVENUE_REBALANCE_UPDATE',
+          'week_of_shock': week_of_shock,
+          'forecast_intervals': forecast_intervals_revenue_rebalance,
+          'forecast_uncertainty_increment': forecast_uncertainty_increment,
+          'weekly_target_scheme_revenue': revenue_neutral_target,
+          'renewables_eligibility': renewables_become_eligible,
+          'forecast_shock': False},
     
-#          'MPC update - revenue neutral - intermittent renewables become eligible - imperfect forecast':
-#           {'shock_option': 'NO_SHOCKS',
-#           'update_mode': 'MPC_UPDATE',
-#           'week_of_shock': week_of_shock,
-#           'forecast_intervals': forecast_intervals_mpc,
-#           'forecast_uncertainty_increment': forecast_uncertainty_increment,
-#           'weekly_target_scheme_revenue': revenue_neutral_target,
-#           'renewables_eligibility': renewables_become_eligible,
-#           'forecast_shock': False},
+         'MPC update - revenue neutral - intermittent renewables become eligible - imperfect forecast':
+          {'shock_option': 'NO_SHOCKS',
+          'update_mode': 'MPC_UPDATE',
+          'week_of_shock': week_of_shock,
+          'forecast_intervals': forecast_intervals_mpc,
+          'forecast_uncertainty_increment': forecast_uncertainty_increment,
+          'weekly_target_scheme_revenue': revenue_neutral_target,
+          'renewables_eligibility': renewables_become_eligible,
+          'forecast_shock': False},
         }
 
 for case, options in cases.items():
