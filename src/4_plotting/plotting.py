@@ -394,7 +394,7 @@ x_b9, y_b9 = get_case_data(run_id=r9, series_name='baseline')
 x_r9, y_r9 = get_case_data(run_id=r9, series_name='rolling_scheme_revenue_interval_end')
 
 
-# In[23]:
+# In[19]:
 
 
 plt.clf()
@@ -575,7 +575,7 @@ ax7.set_xlabel('(d)', fontsize=8, labelpad=0.08)
 ax8.set_xlabel('Week\n(h)', fontsize=8, labelpad=0.15)
 
 ax1.set_title('Revenue neutral', pad=3, fontsize=8)
-ax3.set_title('Revenue target', pad=3, fontsize=8)
+ax3.set_title('Positive revenue target', pad=3, fontsize=8)
 ax5.set_title('Anticipated shock', pad=3, fontsize=8)
 ax7.set_title('Unanticipated shock', pad=3, fontsize=8)
 
@@ -583,7 +583,7 @@ ax2.yaxis.get_offset_text().set_size(8)
 ax6.yaxis.get_offset_text().set_size(8)
 
 # ax2.yaxis.set_major_formatter(FormatStrFormatter('%.2e'))
-legend = ax2.legend([l1, l2, l3, l4], ['Revenue rebalancing', 'MPC update', 'Emissions intensity', 'Revenue target'], fontsize=7, loc='upper left')
+legend = ax2.legend([l1, l2, l3, l4], ['SRR-U', 'MPC-U', 'Emissions intensity ($\mathdefault{\Psi_{s}}$)', 'Revenue target (\$)'], fontsize=7, loc='upper left')
 legend.get_frame().set_linewidth(0.5)
 
 # Set figure size

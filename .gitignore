@@ -4,5 +4,6 @@
 *.txt
 *.lp
 *.mps
+*.sublime-workspace
 
 man/*
