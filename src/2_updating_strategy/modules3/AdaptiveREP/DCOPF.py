@@ -3,7 +3,7 @@ from math import pi
 import numpy as np
 from pyomo.environ import *
 
-from .model_data import OrganisedData
+from .ModelData import OrganisedData
 
 
 class DCOPFModel(OrganisedData):
@@ -26,8 +26,8 @@ class DCOPFModel(OrganisedData):
 
         # Parameters used for different scenarios
         # ---------------------------------------
-        # Week index
-        self.week_index = None
+        # Calibration interval index
+        self.calibration_interval = None
 
         # Scenario index
         self.scenario_index = None
@@ -233,7 +233,7 @@ class DCOPFModel(OrganisedData):
 
         return model
 
-    def update_model_parameters(self, week_index, scenario_index, baseline, permit_price):
+    def update_model_parameters(self, calibration_interval, scenario_index, baseline, permit_price):
         """ Update DCOPF model parameters
 
         Parameters
@@ -242,13 +242,13 @@ class DCOPFModel(OrganisedData):
             DCOPF OPF model
 
         df_scenarios : pandas DataFrame
-            Demand and fixed power injection data for each week and each scenario
+            Demand and fixed power injection data for each calibration interval and each scenario
 
-        week_index : int
-            Index of week for which model should be run
+        calibration_interval : int
+            Index of calibration interval for which model should be run
 
         scenario_index : int
-            Index of scenario that describes operating condition for the given week
+            Index of scenario that describes operating condition for the given calibration interval
 
         baseline: float
             Emissions intensity baseline [tCO2/MWh]
@@ -264,9 +264,9 @@ class DCOPFModel(OrganisedData):
 
         # Update fixed nodal power injections
         for n in self.model.OMEGA_N:
-            self.model.D[n] = float(self.df_scenarios.loc[('demand', n), (week_index, scenario_index)] / self.model.BASE_POWER.value)
-            self.model.HYDRO[n] = float(self.df_scenarios.loc[('hydro', n), (week_index, scenario_index)] / self.model.BASE_POWER.value)
-            self.model.INTERMITTENT[n] = float(self.df_scenarios.loc[('intermittent', n), (week_index, scenario_index)] / self.model.BASE_POWER.value)
+            self.model.D[n] = float(self.df_scenarios.loc[('demand', n), (calibration_interval, scenario_index)] / self.model.BASE_POWER.value)
+            self.model.HYDRO[n] = float(self.df_scenarios.loc[('hydro', n), (calibration_interval, scenario_index)] / self.model.BASE_POWER.value)
+            self.model.INTERMITTENT[n] = float(self.df_scenarios.loc[('intermittent', n), (calibration_interval, scenario_index)] / self.model.BASE_POWER.value)
 
         # Update emissions intensity baseline
         self.model.PHI = float(baseline)
@@ -275,10 +275,10 @@ class DCOPFModel(OrganisedData):
         self.model.TAU = float(permit_price / self.model.BASE_POWER.value)
 
         # Scenario duration
-        self.model.SCENARIO_DURATION = float(self.df_scenarios.loc[('hours', 'duration'), (week_index, scenario_index)])
+        self.model.SCENARIO_DURATION = float(self.df_scenarios.loc[('hours', 'duration'), (calibration_interval, scenario_index)])
 
-        # Update week index
-        self.week_index = week_index
+        # Update calibration interval index
+        self.calibration_interval = calibration_interval
 
         # Update scenario index
         self.scenario_index = scenario_index

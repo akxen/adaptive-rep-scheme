@@ -1,4 +1,6 @@
-from .model_utils import get_perfect_forecasts, get_perturbed_forecast, get_formatted_weekly_input
+import os
+from .Forecast import ConstructForecast
+
 
 SEED = 10
 
@@ -16,6 +18,9 @@ FORECAST_UNCERTAINTY_INCREMENT = 0.05
 
 INITIAL_ROLLING_SCHEME_REVENUE = 0
 
+output_dir = os.path.join(os.path.curdir, os.path.pardir, 'output')
+
+fc = ConstructForecast(output_dir=output_dir)
 
 benchmark_cases = [{'description': 'business as usual - no shocks',
                     'shock_option': 'NO_SHOCKS',
@@ -78,17 +83,17 @@ revenue_ramp_increment = 3e6
 # Then maintain revenue at specified level.
 for key, value in revenue_neutral_target.items():
 
-  # Mainitain intial scheme revenue if before week_of_shock
-  if key < WEEK_OF_SHOCK:
-    positive_revenue_target[key] = INITIAL_ROLLING_SCHEME_REVENUE
+    # Mainitain intial scheme revenue if before week_of_shock
+    if key < WEEK_OF_SHOCK:
+        positive_revenue_target[key] = INITIAL_ROLLING_SCHEME_REVENUE
 
-  # Ramp scheme revenue by the same increment following for
-  elif (key >= WEEK_OF_SHOCK) and (key < WEEK_OF_SHOCK + revenue_ramp_intervals):
-    positive_revenue_target[key] = positive_revenue_target[key - 1] + revenue_ramp_increment
+    # Ramp scheme revenue by the same increment following for
+    elif (key >= WEEK_OF_SHOCK) and (key < WEEK_OF_SHOCK + revenue_ramp_intervals):
+        positive_revenue_target[key] = positive_revenue_target[key - 1] + revenue_ramp_increment
 
-  # Maintain rolling scheme revenue at new level
-  else:
-    positive_revenue_target[key] = positive_revenue_target[key - 1]
+    # Maintain rolling scheme revenue at new level
+    else:
+        positive_revenue_target[key] = positive_revenue_target[key - 1]
 
 
 # Renewables eligibility
@@ -113,6 +118,7 @@ updating_cases = [
      'forecast_uncertainty_increment': 0,
      'weekly_target_scheme_revenue': positive_revenue_target,
      'renewables_eligibility': renewables_ineligible,
+     'forecast_generator_emissions_intensity': fc.get_forecast(forecast_type='generator_emissions_intensities', forecast_intervals=FORECAST_INTERVALS_MPC, forecast_uncertainty_increment=0, shock_option='NO_SHOCKS', initial_permit_price=INITIAL_PERMIT_PRICE, model_horizon=MODEL_HORIZON),
      'forecast_shock': False},
 
     {'description': 'MPC update - revenue neutral - no shocks - perfect forecast',

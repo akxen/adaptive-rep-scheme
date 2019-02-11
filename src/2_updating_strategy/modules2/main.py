@@ -1,6 +1,6 @@
 import os
 
-from adaptive_rep import run_scenarios, cases
+from AdaptiveREP import RunScenarios, Cases
 
 
 # Parameters
@@ -19,5 +19,5 @@ OUTPUT_DIR = os.path.join(os.path.curdir, 'output')
 #     run_scenarios.run_scenarios(data_dir=DATA_DIR, scenarios_dir=SCENARIOS_DIR, output_dir=OUTPUT_DIR, **case)
 
 # Run model where baseline is updated using different strategies / scenarios
-for case in cases.updating_cases:
-    run_scenarios.run_scenarios(data_dir=DATA_DIR, scenarios_dir=SCENARIOS_DIR, output_dir=OUTPUT_DIR, **case)
+for case in Cases.updating_cases:
+    RunScenarios.run_scenarios(data_dir=DATA_DIR, scenarios_dir=SCENARIOS_DIR, output_dir=OUTPUT_DIR, **case)
