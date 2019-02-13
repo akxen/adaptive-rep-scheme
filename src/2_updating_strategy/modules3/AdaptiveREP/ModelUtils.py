@@ -173,68 +173,91 @@ class RecordResults:
             pickle.dump(model_object.df_g, f)
 
 
-def get_formatted_calibration_interval_input(self, calibration_interval_input, forecast_intervals=1):
-    """Format weekly targets / indicator dictionaries so they can be used in revenue rebalancing or MPC updates
+class Utils:
+    def __init__(self, case_options):
+        # Options describing case
+        self.case_options = case_options
 
-    Parameters
-    ----------
-    calibration_interval_input : dict
-        Target or indicator given corresponds to a given calibration interval
+    def format_input(self, input_data):
+        """Format weekly targets / indicator dictionaries so they can be used in revenue rebalancing or MPC updates
 
-    forecast_intervals : int
-        Number of forecast intervals if using MPC. Default = 1.
+        Parameters
+        ----------
+        calibration_interval_input : dict
+            Target or indicator given corresponds to a given calibration interval
 
-    Returns
-    -------
-    intermittent_generators_regulated : dict
-        Formatted dictionary denoting whether renewables are eligible in following periods.
-    """
+        forecast_intervals : int
+            Number of forecast intervals if using MPC. Default = 1.
 
-    # Length of model horizon
-    model_horizon = len(calibration_interval_input)
+        Returns
+        -------
+        intermittent_generators_regulated : dict
+            Formatted dictionary denoting whether renewables are eligible in following periods.
+        """
 
-    # Formatted so can be used in either revenue re-balancing or MPC update
-    formatted_weekly_input = {i: {j + 1: calibration_interval_input[j + i] for j in range(0, self.forecast_intervals)} for i in range(1, self.model_horizon + 1 - self.forecast_intervals + 1)}
+        # Container for formatted input values
+        formatted_input = dict()
 
-    return formatted_weekly_input
+        # For each calibration interval
+        for calibration_interval in range(1, self.case_options.get('model_horizon') + 1 - self.case_options.get('forecast_intervals') + 1):
+
+            # Construct a container for forecast values corresponding to the calibration interval
+            formatted_input[calibration_interval] = dict()
+
+            # For each forecast interval
+            for forecast_interval in range(1, self.case_options.get('forecast_intervals') + 1):
+
+                # Place input data at correct location corresponding to forecast and calibration interval indices
+                formatted_input[calibration_interval][forecast_interval] = input_data[calibration_interval + forecast_interval - 1]
+
+        return formatted_input
+
+    def case_options_valid(self):
+        "Check that model options are valid"
+
+        if 'update_mode' not in self.case_options:
+            raise(Exception('Must specify an update mode'))
+
+        if self.case_options.get('update_mode') not in ['NO_UPDATE', 'REVENUE_REBALANCE_UPDATE', 'MPC_UPDATE']:
+            raise Warning(f"Unexpected update_mode encountered: {self.case_options.get('update_mode')}")
+
+        if 'shock_option' not in self.case_options:
+            raise(Exception('Must specify shock option'))
+
+        if self.case_options.get('shock_option') not in ['NO_SHOCKS', 'EMISSIONS_INTENSITY_SHOCK']:
+            raise Warning(f"Unexpected shock_option encountered: {self.case_options.get('shock_option')}")
+
+        if (self.case_options.get('update_mode') == 'MPC_UPDATE') and 'forecast_intervals' not in self.case_options:
+            raise(Exception('forecast_intervals not given. Must be specified if using MPC updating.'))
+
+        return True
 
 
-def check_case_options(case_options):
-    "Check that model options are valid"
+class ApplyShock(RecordResults):
+    def __init__(self, output_dir, case_options):
+        super().__init__(case_options)
 
-    if 'update_mode' not in case_options:
-        raise(Exception('Must specify an update mode'))
+        self.output_dir = output_dir
+        self.case_options = case_options
 
-    if case_options.get('update_mode') not in ['NO_UPDATE', 'REVENUE_REBALANCE_UPDATE', 'MPC_UPDATE']:
-        raise Warning(f"Unexpected update_mode encountered: {case_options.get('update_mode')}")
+    def apply_emissions_intensity_shock(self, model_object):
+        "Data used to update emissions intensities for generators if shock occurs"
 
-    if 'shock_option' not in case_options:
-        raise(Exception('Must specify shock option'))
+        # Set seed so random shocks can be reproduced
+        np.random.seed(self.case_options.get('seed'))
 
-    if case_options.get('shock_option') not in ['NO_SHOCKS', 'EMISSIONS_INTENSITY_SHOCK']:
-        raise Warning(f"Unexpected shock_option encountered: {case_options.get('shock_option')}")
+        # Augment original emissions intensity by random scaling factor between 0.8 and 1
+        df_emissions_intensity_shock_factor = pd.Series(index=sorted(model_object.model.OMEGA_G),
+                                                        data=np.random.uniform(0.8, 1, len(model_object.model.OMEGA_G)))
 
-    if (case_options.get('update_mode') == 'MPC_UPDATE') and 'forecast_interval_mpc' not in case_options:
-        raise(Exception('forecast_interval_mpc not given. Must be specified if using MPC updating.'))
+        # Loop through generators
+        for g in model_object.model.OMEGA_G:
 
+            # Augment generator emissions intensities
+            model_object.model.EMISSIONS_INTENSITY_SHOCK_FACTOR[g] = float(df_emissions_intensity_shock_factor.loc[g])
 
-def apply_emissions_intensity_shock(output_dir, model_object, case_summary):
-    "Data used to update emissions intensities for generators if shock occurs"
+        # Save emissions intensity schock factor
+        with open(f"{self.output_dir}/{self.case_summary['case_id']}_emissions_intensity_shock_factor.pickle", 'wb') as f:
+            pickle.dump(df_emissions_intensity_shock_factor, f)
 
-    # Set seed so random shocks can be reproduced
-    np.random.seed(case_summary['seed'])
-
-    # Augment original emissions intensity by random scaling factor between 0.8 and 1
-    df_emissions_intensity_shock_factor = pd.Series(index=sorted(model_object.model.OMEGA_G), data=np.random.uniform(0.8, 1, len(model_object.model.OMEGA_G)))
-
-    # Loop through generators
-    for g in model_object.model.OMEGA_G:
-
-        # Augment generator emissions intensities
-        model_object.model.EMISSIONS_INTENSITY_SHOCK_FACTOR[g] = float(df_emissions_intensity_shock_factor.loc[g])
-
-    # Save emissions intensity schock factor
-    with open(f"{output_dir}/{case_summary['case_id']}_emissions_intensity_shock_factor.pickle", 'wb') as f:
-        pickle.dump(df_emissions_intensity_shock_factor, f)
-
-    return model_object
+        return model_object

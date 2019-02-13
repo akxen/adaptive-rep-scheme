@@ -220,7 +220,6 @@ def run_scenarios(data_dir, scenarios_dir, output_dir, **kwargs):
             renewables_included_this_week = False
 
         elif kwargs.get('update_mode') == 'REVENUE_REBALANCE_UPDATE':
-
             # Forecast regulated generator emissions in next period
             forecast_regulated_generator_total_emissions = sum(kwargs.get('forecast_generator_emissions_intensity')[week_index][1][g] * kwargs.get('forecast_generator_energy')[week_index][1][g] for g in DCOPF.model.OMEGA_G)
 
@@ -241,7 +240,7 @@ def run_scenarios(data_dir, scenarios_dir, output_dir, **kwargs):
 
             if renewables_included_this_week:
                 # Intermittent generators are part of scheme's remit, and receive payments
-                forecast_regulated_generator_total_energy += forecast_fossil_generator_total_energy + forecast_intermittent_generator_total_energy
+                forecast_regulated_generator_total_energy = forecast_fossil_generator_total_energy + forecast_intermittent_generator_total_energy
             else:
                 # Only output from fossil generators considered
                 forecast_regulated_generator_total_energy = forecast_fossil_generator_total_energy
@@ -266,7 +265,7 @@ def run_scenarios(data_dir, scenarios_dir, output_dir, **kwargs):
 
             # Have limited information at end of model horizon to make forecast e.g. in the 2nd to last
             # week it's not possible to forecast 6 weeks in the future. Instead use the baselines
-            # generated from the last optimal path calculated.
+            # generatored from the last optimal path calculated.
             if week_index <= weeks[-1] - kwargs.get('forecast_interval_mpc') + 1:
                 # Expected generator energy output in forecast interval
                 forecast_energy = kwargs.get('forecast_generator_energy')[week_index]
