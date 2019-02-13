@@ -90,6 +90,7 @@ class ConstructForecast:
         else:
             # case_id for the benchmark case that will be used to generate forecast signals
             forecast_case_id = case_summaries.loc[mask].index[0]
+            print(f'Forecast benchmark case ID: {forecast_case_id}')
 
             return forecast_case_id
 
@@ -141,7 +142,7 @@ class ConstructForecast:
 
                 # For each forecast interval
                 for forecast_interval in range(1, self.case_options.get('forecast_intervals') + 1):
-                    forecast[calibration_interval][forecast_interval] = benchmark_calibration_interval_metrics['dispatchable_generator_emissions_intensities'][forecast_interval]
+                    forecast[calibration_interval][forecast_interval] = benchmark_calibration_interval_metrics['dispatchable_generator_emissions_intensities'][calibration_interval + forecast_interval - 1]
 
         elif forecast_type == 'intermittent_energy':
             # Initialise dictionary used to contain forecast values

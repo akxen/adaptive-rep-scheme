@@ -135,7 +135,7 @@ class RecordResults:
         self.calibration_interval_metrics['average_energy_price'][calibration_interval] = self.calibration_interval_metrics['energy_revenue'][calibration_interval] / self.calibration_interval_metrics['total_demand_MWh'][calibration_interval]
 
         # Metrics that depend on whether or not renewables are subject to emissions policy
-        if ('renewables_included' in case_options) and case_options.get('renewables_included')[calibration_interval]:
+        if ('renewables_eligibility' in case_options) and case_options.get('renewables_eligibility') == 'eligible':
             # Net scheme revenue when intermittent renewables are covered by policy [$]
             self.calibration_interval_metrics['net_scheme_revenue'][calibration_interval] = self.calibration_interval_metrics['net_scheme_revenue_dispatchable_generators'][calibration_interval] + self.calibration_interval_metrics['net_scheme_revenue_intermittent_generators'][calibration_interval]
 
@@ -146,7 +146,7 @@ class RecordResults:
             # Net scheme revenue when existing renewables not covered by policy [$]
             self.calibration_interval_metrics['net_scheme_revenue'][calibration_interval] = self.calibration_interval_metrics['net_scheme_revenue_dispatchable_generators'][calibration_interval]
 
-            # Average emissions intensity of all generators subject to emissions policy generators when renewables included [tCO2/MWh]
+            # Average emissions intensity of all generators subject to emissions policy when renewables included [tCO2/MWh]
             self.calibration_interval_metrics['average_emissions_intensity_regulated_generators'][calibration_interval] = self.calibration_interval_metrics['total_emissions_tCO2'][calibration_interval] / self.calibration_interval_metrics['total_dispatchable_generator_energy_MWh'][calibration_interval]
 
         # Record rolling scheme revenue at end of calibration interval [$]

@@ -99,6 +99,16 @@ class RunSimulator:
       else:
         Results.calibration_interval_metrics['rolling_scheme_revenue_interval_start'][calibration_interval] = Results.calibration_interval_metrics['rolling_scheme_revenue_interval_end'][calibration_interval - 1]
 
+      try:
+        print(f'\n Interval start target revenue: {Target.revenue_target}')
+      except:
+        pass
+
+      try:
+        print(f"Interval start scheme revenue: {Results.calibration_interval_metrics['rolling_scheme_revenue_interval_start'][calibration_interval]}")
+      except:
+        pass
+
       # Compute baseline
       # ----------------
       if self.case_options.get('update_mode') == 'NO_UPDATE':
@@ -164,6 +174,18 @@ class RunSimulator:
       Results.store_calibration_interval_metrics(model_object=DCOPF,
                                                  calibration_interval=calibration_interval,
                                                  case_options=self.case_options)
+
+      print(f"\n Interval end rolling scheme revenue: {Results.calibration_interval_metrics['rolling_scheme_revenue_interval_end'][calibration_interval]}")
+
+      print(f"Inteval end total emissions {calibration_interval}: {Results.calibration_interval_metrics['total_emissions_tCO2'][calibration_interval]}")
+
+      print(f"Interval end ispatchable Generator energy {calibration_interval}: {Results.calibration_interval_metrics['total_dispatchable_generator_energy_MWh'][calibration_interval]}")
+
+      print(f"Interval end total intermittent energy {calibration_interval}: {Results.calibration_interval_metrics['total_intermittent_energy_MWh'][calibration_interval]}")
+
+      print(f'Interval end baseline applied: {baseline}')
+
+      print(f"Interval end regulated generator emissions intensity: {Results.calibration_interval_metrics['average_emissions_intensity_regulated_generators'][calibration_interval]}")
 
       print(f'Completed calibration interval {calibration_interval} in {time.time()-t0:.2f}s')
 

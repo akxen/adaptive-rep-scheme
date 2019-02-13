@@ -59,16 +59,16 @@ class MPCModel:
         model.PERMIT_PRICE = Param(initialize=0, mutable=True)
 
         # Emissions intensity baseline from previous period
-        model.baseline_interval_start = Param(initialize=0, mutable=True)
+        model.BASELINE_INTERVAL_START = Param(initialize=0, mutable=True)
 
         # Initial rolling scheme revenue
-        model.scheme_revenue_interval_start = Param(initialize=0, mutable=True)
+        model.SCHEME_REVENUE_INTERVAL_START = Param(initialize=0, mutable=True)
 
         # Rolling scheme revenue target at end of finite horizon
-        model.target_scheme_revenue = Param(initialize=0, mutable=True)
+        model.TARGET_SCHEME_REVENUE = Param(initialize=0, mutable=True)
 
         # Indicator denoting whether energy from intermittent renewables is eligible for scheme payments
-        model.renewables_eligibility_INDICATOR = Param(model.OMEGA_T, initialize=0, mutable=True)
+        model.RENEWABLES_ELIGIBILITY_INDICATOR = Param(model.OMEGA_T, initialize=0, mutable=True)
 
         # Variables
         # ---------
@@ -78,10 +78,10 @@ class MPCModel:
         # Constraints
         # -----------
         # Scheme revenue must be at target by end of model horizon
-        model.SCHEME_REVENUE = Constraint(expr=model.scheme_revenue_interval_start
+        model.SCHEME_REVENUE = Constraint(expr=model.SCHEME_REVENUE_INTERVAL_START
                                           + sum((model.EMISSIONS_INTENSITY_FORECAST[g, t] - model.phi[t]) * model.ENERGY_FORECAST[g, t] * model.PERMIT_PRICE for g in model.OMEGA_G for t in model.OMEGA_T)
-                                          - sum(model.renewables_eligibility_INDICATOR[t] * model.phi[t] * model.INTERMITTENT_ENERGY_FORECAST[t] * model.PERMIT_PRICE for t in model.OMEGA_T)
-                                          == model.target_scheme_revenue)
+                                          - sum(model.RENEWABLES_ELIGIBILITY_INDICATOR[t] * model.phi[t] * model.INTERMITTENT_ENERGY_FORECAST[t] * model.PERMIT_PRICE for t in model.OMEGA_T)
+                                          == model.TARGET_SCHEME_REVENUE)
 
         # Baseline must be non-negative
         def BASELINE_NONNEGATIVE_RULE(model, t):
@@ -91,7 +91,7 @@ class MPCModel:
         # Objective function
         # ------------------
         # Minimise changes to baseline over finite time horizon
-        model.OBJECTIVE = Objective(expr=(((model.phi[model.OMEGA_T.first()] - model.baseline_interval_start) * (model.phi[model.OMEGA_T.first()] - model.baseline_interval_start))
+        model.OBJECTIVE = Objective(expr=(((model.phi[model.OMEGA_T.first()] - model.BASELINE_INTERVAL_START) * (model.phi[model.OMEGA_T.first()] - model.BASELINE_INTERVAL_START))
                                           + sum((model.phi[t] - model.phi[t - 1]) * (model.phi[t] - model.phi[t - 1]) for t in model.OMEGA_T if t > model.OMEGA_T.first()))
                                     )
         return model
@@ -130,9 +130,9 @@ class MPCModel:
         for t in self.model.OMEGA_T:
 
             if renewables_eligibility[t]:
-                self.model.renewables_eligibility_INDICATOR[t] = float(1)
+                self.model.RENEWABLES_ELIGIBILITY_INDICATOR[t] = float(1)
             else:
-                self.model.renewables_eligibility_INDICATOR[t] = float(0)
+                self.model.RENEWABLES_ELIGIBILITY_INDICATOR[t] = float(0)
 
             # For each generator
             for g in self.model.OMEGA_G:
@@ -149,13 +149,13 @@ class MPCModel:
         self.model.PERMIT_PRICE = float(permit_price)
 
         # Emissions intensity baseline from previous period
-        self.model.baseline_interval_start = float(baseline_interval_start)
+        self.model.BASELINE_INTERVAL_START = float(baseline_interval_start)
 
         # Initial rolling scheme revenue
-        self.model.scheme_revenue_interval_start = float(scheme_revenue_interval_start)
+        self.model.SCHEME_REVENUE_INTERVAL_START = float(scheme_revenue_interval_start)
 
         # Rolling scheme revenue target at end of forecast horizon
-        self.model.target_scheme_revenue = float(target_scheme_revenue)
+        self.model.TARGET_SCHEME_REVENUE = float(target_scheme_revenue)
 
     def solve_model(self):
         "Solve for optimal emissions intensity baseline path"

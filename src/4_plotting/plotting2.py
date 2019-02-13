@@ -7,6 +7,7 @@
 import os
 import pickle
 
+import numpy as np
 import pandas as pd
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -30,298 +31,244 @@ results_dir = os.path.join(os.path.curdir, os.path.pardir, '2_updating_strategy'
 # In[3]:
 
 
-def get_case_summaries(results_dir):
-    """Collate information summarising the parameters used in each case
+class CaseHandler:
+    def __init__(self, results_dir):
+        # Directory containing model results
+        self.results_dir = results_dir
+        
+        # Case summaries
+        self.case_summaries = self._get_case_summaries()
+        
     
-    Parameters
-    ----------
-    results_dir : str
-        Directory containing model output
-    
-    
-    Returns
-    -------
-    case_summaries : dict
-        Dictionary summarising model parameterisations    
-    """
-    
-    # Find all results summary files
-    case_summary_files = [i for i in os.listdir(results_dir) if 'case_summary' in i]
+    def _get_case_summaries(self):
+        """Collate information summarising the parameters used in each case   
 
-    # Container for dictionaries summarising model cases
-    case_summaries = []
+        Returns
+        -------
+        case_summaries : pandas DataFrame
+            Summary of model parameterisations    
+        """
 
-    # Open each case summary file and compile in a single dictionary
-    for i in case_summary_files:
-        with open(os.path.join(results_dir, i), 'rb') as f:
-            # Load case summary from file
-            case_summary = pickle.load(f)
+        # Find all results summary files
+        case_summary_files = [i for i in os.listdir(self.results_dir) if 'case_summary' in i]
+
+        # Container for dictionaries summarising model cases
+        case_summaries = []
+
+        # Open each case summary file and compile in a single dictionary
+        for i in case_summary_files:
+            with open(os.path.join(self.results_dir, i), 'rb') as f:
+                # Load case summary from file
+                case_summary = pickle.load(f)
+
+                # Append to dictionary collating all case summaries
+                case_summaries.append(case_summary)
+
+        # Convert to DataFrame
+        df_case_summaries = pd.DataFrame(case_summaries).set_index('case_id')
+        
+        # Convert null values in forecast shock field to False (easier for masking later)
+        df_case_summaries['forecast_shock'] = df_case_summaries.apply(lambda x: True if x['forecast_shock'] == True else False, axis=1)
+
+        return df_case_summaries
+    
+    def print_case_descriptions(self):
+        """Print descriptions used for each case"""
+        
+        for index, row in self.case_summaries.iterrows():
+            print(index, row['description'])
             
-            # Append to dictionary collating all case summaries
-            case_summaries.append(case_summary)
             
-    return case_summaries
+    def get_case_id_by_description(self, description):
+        """Given description text, get run ID for given case
 
-# Summary of parameters used for each case
-case_summaries = pd.DataFrame(get_case_summaries(results_dir)).set_index('case_id')
+        Parameters
+        ----------
+        description : str
+            String used to describe case
 
+        Returns
+        -------
+        case_id : str
+            Run ID for the described case    
+        """
 
-# In[5]:
+        # All IDs corresponding to the given case description
+        mask = self.case_summaries['description']==description
+        ids = self.case_summaries.loc[mask].index
 
+        if len(ids) != 1:
+            raise(Exception(f'Should only return 1 case_id, returned : {self.case_summaries.loc[mask].index}'))
 
-for index, row in case_summaries.iterrows():
-    print(index, row['description'])
-
-
-# In[ ]:
-
-
-def is_revenue_neutral(revenue_target):
-    """Check if case is revenue neutral
+        return self.case_summaries.loc[mask].index[0]
     
-    Parameters
-    ----------
-    revenue_target : dict or None
-        Defines revenue target for each period.
-        Note: Will be None when running benchmark cases
+    def get_case_data(self, case_id, series_name):
+        """Extract data for given case_id and series_name
+
+        Parameters
+        ----------
+        case_id : str
+            ID of case for which data should be extracted
+
+        series_name : str
+            Name of series for which data should be extracted
+
+
+        Returns
+        -------
+        index : list
+            Series index
+
+        values : list
+            Series values  
+        """
+
+        with open(os.path.join(self.results_dir, f'{case_id}_calibration_interval_metrics.pickle'), 'rb') as f:
+            calibration_interval_metrics = pickle.load(f)
+
+        index, values = list(calibration_interval_metrics[series_name].keys()), list(calibration_interval_metrics[series_name].values())
+
+        return index, values
     
-    Returns
-    -------
-    revenue_neutral : bool
-        True = target scheme revenue is 0 for all periods
-        False = Non-zero scheme revenue target for at least one period    
-    """
     
-    # Check if revenue target is None
-    if revenue_target is None:
-        revenue_neutral = None
+    def get_case_id(self, update_mode, shock_option, forecast_uncertainty_increment, forecast_shock, 
+                    revenue_target, renewables_eligibility):
+        """Given case parameters, find ID corresponding to case
+
+        Parameters
+        ----------
+        update_mode : str
+            Type of baseline updating used
+            Options - NO_UPDATE, MPC_UPDATE, REVENUE_REBALANCE_UPDATE
+
+        shock_option : str
+            Type of shock subjected to model
+            Options - NO_SHOCK, EMISSIONS_INTENSITY_SHOCK
+
+        anticipated_shock : bool or None
+            Denotes if shock was anticipated. Use None if no shock (i.e. not applicable)
+
+        forecast_uncertainty_increment : float
+            Scaling factor used when perturbing forecasts
+
+        revenue_neutral : bool
+            Defines if revenue neutral target employed. True = revenue neutral target,
+            False = Non-revenue neutral target
+
+        renewables_eligible : bool
+            Defines if renewables are eligibile for emissions payments 
+
+
+        Returns
+        -------
+        case_id : str
+            ID of case which satisfies given criteria
+        """
         
-    elif revenue_target is not None:
+        mask = ((self.case_summaries['update_mode'] == update_mode)
+                & (self.case_summaries['shock_option'] == shock_option)
+                & (self.case_summaries['forecast_uncertainty_increment'] == forecast_uncertainty_increment)
+                & (self.case_summaries['forecast_shock'] == forecast_shock)
+                & (self.case_summaries['revenue_target'] == revenue_target)
+                & (self.case_summaries['renewables_eligibility'] == renewables_eligibility)              
+               )
         
-        # Check if revenue target for all periods = 0
-        revenue_neutral =  all([True if revenue_target[i][j] == 0 else False 
-                                for i in revenue_target.keys() 
-                                for j in revenue_target[i].keys()])
-    
-    # If revenue target is None, return False
-    else:
-        revenue_neutral = False
-    
-    return revenue_neutral
+        if len(self.case_summaries.loc[mask].index) != 1:
+            raise(Exception(f'Should only return 1 case_id, returned : {self.case_summaries.loc[mask].index}'))
+
+        return self.case_summaries.loc[mask].index[0]
+
+# Instantiate model object
+Case = CaseHandler(results_dir)
 
 
-def renewables_become_eligible(renewables_eligible):
-    """Check if renewables become eligible to receive payments
-    
-    Parameters
-    ----------
-    renewables_eligibile : str
-        Defines if renewables are eligible for payments in each period
-        Note: Will be None when running benchmark cases
-    
-    Returns
-    -------
-    renewables_are_eligible : bool
-        True = renewables are eligible for payments in at least one week
-        False = renewables are ineligible for payments for all weeks    
-    """
-    
-    # Check if input is type None
-    if renewables_eligible is None:
-        renewables_are_eligible = None
-        
-    elif renewables_eligible is not None:
-        # Check if renewabes are eligible for payments in at least one week
-        renewables_are_eligible = any([renewables_eligible[i][j] 
-                                       for i in renewables_eligible.keys() 
-                                       for j in renewables_eligible[i].keys()])
-    
-    # Renewables don't receive payments in any week, return False
-    else:
-        renewables_are_eligible = False
-    
-    return renewables_are_eligible
+# In[4]:
 
 
-def get_case_id(update_mode, shock_option, anticipated_shock, forecast_uncertainty_increment, 
-                    revenue_neutral, renewables_eligible):
-    """Given case parameters, find run_id corresponding to case
-    
-    Parameters
-    ----------
-    update_mode : str
-        Type of baseline updating used
-        Options - NO_UPDATE, MPC_UPDATE, REVENUE_REBALANCE_UPDATE
-    
-    shock_option : str
-        Type of shock subjected to model
-        Options - NO_SHOCK, EMISSIONS_INTENSITY_SHOCK
-    
-    anticipated_shock : bool or None
-        Denotes if shock was anticipated. Use None if no shock (i.e. not applicable)
-        
-    forecast_uncertainty_increment : float
-        Scaling factor used when perturbing forecasts
-    
-    revenue_neutral : bool
-        Defines if revenue neutral target employed. True = revenue neutral target,
-        False = Non-revenue neutral target
-    
-    renewables_eligible : bool
-        Defines if renewables are eligibile for emissions payments 
-        
-    
-    Returns
-    -------
-    run_id : str
-        ID of case which satisfies given criteria
-    """
-    
-    # Check that update mode and shock_option are valid
-    if update_mode not in ['NO_UPDATE', 'MPC_UPDATE', 'REVENUE_REBALANCE_UPDATE']:
-        raise(Exception(f'Unexpected update_mode specified: {update_mode}'))
-    
-    if shock_option not in ['NO_SHOCKS', 'EMISSIONS_INTENSITY_SHOCK']:
-        raise(Exception(f'Unexpected shock_option specified: {shock_option}'))
-        
-    # Check if shock was anticipated or not (or if not applicable in which case
-    # anticipated shock = None).
-    if anticipated_shock is None:
-        description_filter_1 = ''
-    
-    elif anticipated_shock:
-        description_filter_1 = ' anticipated'
-    
-    else:
-        description_filter_1 = ' unanticipated'
+# Print case descriptions
+Case.print_case_descriptions()
+
+# Get case ID by description
+Case.get_case_id_by_description(description='carbon tax - no shocks')
+
+# Extract data for given case ID and series name
+# Case.get_case_data(case_id='68F4C8B9', series_name='baseline')
+
+Case.case_summaries
 
 
-    # run_summaries.loc[(run_summaries['update_mode'] == update_mode) and ]
-    mask = run_summaries.apply(lambda x: (x['shock_option'] == shock_option)
-                               and (x['update_mode'] == update_mode)
-                               and (x['forecast_uncertainty_increment'] == forecast_uncertainty_increment)
-                               and (is_revenue_neutral(x['target_scheme_revenue']) == revenue_neutral)
-                               and (renewables_become_eligible(x['intermittent_generators_regulated']) == renewables_eligible)
-                               and (description_filter_1 in x['description']), axis=1)
-
-    if len(run_summaries.loc[mask].index) != 1:
-        raise(Exception(f'Should only return 1 run_id, returned : {run_summaries.loc[mask].index}'))
-
-    return run_summaries.loc[mask].index[0]
+# In[6]:
 
 
-def get_case_id_by_description(description):
-    """Given description text, get run ID for given case
-    
-    Parameters
-    ----------
-    description : str
-        String used to describe case
-    
-    Returns
-    -------
-    run_id : str
-        Run ID for the described case    
-    """
-    
-    # All IDs corresponding to the given case description
-    mask = run_summaries['description']==description
-    ids = run_summaries.loc[mask].index
-    
-    if len(ids) != 1:
-        raise(Exception(f'Should only return 1 run_id, returned : {run_summaries.loc[mask].index}'))
-    
-    return run_summaries.loc[mask].index[0]
-    
-
-def get_case_data(run_id, series_name):
-    """Extract data for given run_id and series_name
-    
-    Parameters
-    ----------
-    run_id : str
-        ID of case for which data should be extracted
-    
-    series_name : str
-        Name of series for which data should be extracted
-    
-    
-    Returns
-    -------
-    index : list
-        Series index
-    
-    values : list
-        Series values  
-    """
-    
-    with open(os.path.join(results_dir, f'{run_id}_week_metrics.pickle'), 'rb') as f:
-        week_metrics = pickle.load(f)
-        
-    index, values = list(week_metrics[series_name].keys()), list(week_metrics[series_name].values())
-
-    return index, values
+Case.get_case_id(update_mode='MPC_UPDATE', 
+                 shock_option='NO_SHOCKS', 
+                 forecast_uncertainty_increment=0.05, 
+                 forecast_shock=False,
+                 revenue_target='neutral',
+                 renewables_eligibility='ineligible')
 
 
-# In[ ]:
+# In[7]:
 
+
+FORECAST_UNCERTAINTY_INCREMENT = 0.05
 
 # Emissions intensity
 # -------------------
 # Run ID
-r0 = get_case_run_id_by_description(description='carbon tax - no shocks')
+r0 = Case.get_case_id_by_description(description='carbon tax - no shocks')
 
 # Baseline
-x_e0, y_e0 = get_case_data(run_id=r0, series_name='average_emissions_intensity_regulated_generators')
+x_e0, y_e0 = Case.get_case_data(case_id=r0, series_name='average_emissions_intensity_regulated_generators')
+
 
 
 # Revenue neutral case - no shocks - revenue re-balancing update
 # --------------------------------------------------------------
 # Run ID
-r1 = get_case_run_id(update_mode='REVENUE_REBALANCE_UPDATE', shock_option='NO_SHOCKS', anticipated_shock=None, 
-                     forecast_uncertainty_increment=0.05, revenue_neutral=True, renewables_eligible=False)
+r1 = Case.get_case_id(update_mode='REVENUE_REBALANCE_UPDATE', shock_option='NO_SHOCKS', forecast_shock=False, 
+                     forecast_uncertainty_increment=FORECAST_UNCERTAINTY_INCREMENT, revenue_target='neutral', renewables_eligibility='ineligible')
 # Baseline
-x_b1, y_b1 = get_case_data(run_id=r1, series_name='baseline')
+x_b1, y_b1 = Case.get_case_data(case_id=r1, series_name='baseline')
 
 # Rolling scheme revenue
-x_r1, y_r1 = get_case_data(run_id=r1, series_name='rolling_scheme_revenue_interval_end')
+x_r1, y_r1 = Case.get_case_data(case_id=r1, series_name='rolling_scheme_revenue_interval_end')
 
 
 # Revenue neutral case - no shocks - MPC
 # --------------------------------------
 # Run ID
-r2 = get_case_run_id(update_mode='MPC_UPDATE', shock_option='NO_SHOCKS', anticipated_shock=None, 
-                     forecast_uncertainty_increment=0.05, revenue_neutral=True, renewables_eligible=False)
+r2 = Case.get_case_id(update_mode='MPC_UPDATE', shock_option='NO_SHOCKS', forecast_shock=False, 
+                     forecast_uncertainty_increment=FORECAST_UNCERTAINTY_INCREMENT, revenue_target='neutral', renewables_eligibility='ineligible')
 # Baseline
-x_b2, y_b2 = get_case_data(run_id=r2, series_name='baseline')
+x_b2, y_b2 = Case.get_case_data(case_id=r2, series_name='baseline')
 
 # Rolling scheme revenue
-x_r2, y_r2 = get_case_data(run_id=r2, series_name='rolling_scheme_revenue_interval_end')
-
+x_r2, y_r2 = Case.get_case_data(case_id=r2, series_name='rolling_scheme_revenue_interval_end')
 
 
 # Revenue target case - no shocks - revenue re-balancing update
 # --------------------------------------------------------------
 # Run ID
-r3 = get_case_run_id(update_mode='REVENUE_REBALANCE_UPDATE', shock_option='NO_SHOCKS', anticipated_shock=None, 
-                     forecast_uncertainty_increment=0.05, revenue_neutral=False, renewables_eligible=False)
+r3 = Case.get_case_id(update_mode='REVENUE_REBALANCE_UPDATE', shock_option='NO_SHOCKS', forecast_shock=False, 
+                     forecast_uncertainty_increment=FORECAST_UNCERTAINTY_INCREMENT, revenue_target='ramp_up', renewables_eligibility='ineligible')
 # Baseline
-x_b3, y_b3 = get_case_data(run_id=r3, series_name='baseline')
+x_b3, y_b3 = Case.get_case_data(case_id=r3, series_name='baseline')
 
 # Rolling scheme revenue
-x_r3, y_r3 = get_case_data(run_id=r3, series_name='rolling_scheme_revenue_interval_end')
+x_r3, y_r3 = Case.get_case_data(case_id=r3, series_name='rolling_scheme_revenue_interval_end')
 
 
 # Revenue target case - no shocks - MPC
 # --------------------------------------
 # Run ID
-r4 = get_case_run_id(update_mode='MPC_UPDATE', shock_option='NO_SHOCKS', anticipated_shock=None, 
-                     forecast_uncertainty_increment=0.05, revenue_neutral=False, renewables_eligible=False)
+r4 = Case.get_case_id(update_mode='MPC_UPDATE', shock_option='NO_SHOCKS', forecast_shock=False,
+                     forecast_uncertainty_increment=FORECAST_UNCERTAINTY_INCREMENT, revenue_target='ramp_up', renewables_eligibility='ineligible')
 # Baseline
-x_b4, y_b4 = get_case_data(run_id=r4, series_name='baseline')
+x_b4, y_b4 = Case.get_case_data(case_id=r4, series_name='baseline')
 
 # Rolling scheme revenue
-x_r4, y_r4 = get_case_data(run_id=r4, series_name='rolling_scheme_revenue_interval_end')
+x_r4, y_r4 = Case.get_case_data(case_id=r4, series_name='rolling_scheme_revenue_interval_end')
 
 
 
@@ -330,61 +277,61 @@ x_r4, y_r4 = get_case_data(run_id=r4, series_name='rolling_scheme_revenue_interv
 # Emissions intensity 
 # -------------------
 # Run ID
-r5 = get_case_run_id_by_description(description='carbon tax - emissions intensity shock')
+r5 = Case.get_case_id_by_description(description='carbon tax - emissions intensity shock')
 
 # Baseline
-x_e5, y_e5 = get_case_data(run_id=r5, series_name='average_emissions_intensity_regulated_generators')
+x_e5, y_e5 = Case.get_case_data(case_id=r5, series_name='average_emissions_intensity_regulated_generators')
 
 
 # Revenue neutral case - emissions intensity shock - revenue re-balancing update
 # ------------------------------------------------------------------------------
 # Run ID
-r6 = get_case_run_id(update_mode='REVENUE_REBALANCE_UPDATE', shock_option='EMISSIONS_INTENSITY_SHOCK', anticipated_shock=True, 
-                     forecast_uncertainty_increment=0.05, revenue_neutral=True, renewables_eligible=False)
+r6 = Case.get_case_id(update_mode='REVENUE_REBALANCE_UPDATE', shock_option='EMISSIONS_INTENSITY_SHOCK', forecast_shock=False, 
+                     forecast_uncertainty_increment=FORECAST_UNCERTAINTY_INCREMENT, revenue_target='neutral', renewables_eligibility='ineligible')
 # Baseline
-x_b6, y_b6 = get_case_data(run_id=r6, series_name='baseline')
+x_b6, y_b6 = Case.get_case_data(case_id=r6, series_name='baseline')
 
 # Rolling scheme revenue
-x_r6, y_r6 = get_case_data(run_id=r6, series_name='rolling_scheme_revenue_interval_end')
+x_r6, y_r6 = Case.get_case_data(case_id=r6, series_name='rolling_scheme_revenue_interval_end')
 
 
 # Revenue neutral case - emissions intensity shock - MPC
 # ------------------------------------------------------
 # Run ID
-r7 = get_case_run_id(update_mode='MPC_UPDATE', shock_option='EMISSIONS_INTENSITY_SHOCK', anticipated_shock=True, 
-                     forecast_uncertainty_increment=0.05, revenue_neutral=True, renewables_eligible=False)
+r7 = Case.get_case_id(update_mode='MPC_UPDATE', shock_option='EMISSIONS_INTENSITY_SHOCK', forecast_shock=False, 
+                     forecast_uncertainty_increment=FORECAST_UNCERTAINTY_INCREMENT, revenue_target='neutral', renewables_eligibility='ineligible')
 # Baseline
-x_b7, y_b7 = get_case_data(run_id=r7, series_name='baseline')
+x_b7, y_b7 = Case.get_case_data(case_id=r7, series_name='baseline')
 
 # Rolling scheme revenue
-x_r7, y_r7 = get_case_data(run_id=r7, series_name='rolling_scheme_revenue_interval_end')
+x_r7, y_r7 = Case.get_case_data(case_id=r7, series_name='rolling_scheme_revenue_interval_end')
 
 
 # Revenue target case - emissions intensity shock - revenue re-balancing update
 # -----------------------------------------------------------------------------
 # Run ID
-r8 = get_case_run_id(update_mode='REVENUE_REBALANCE_UPDATE', shock_option='EMISSIONS_INTENSITY_SHOCK', anticipated_shock=False, 
-                     forecast_uncertainty_increment=0.05, revenue_neutral=True, renewables_eligible=False)
+r8 = Case.get_case_id(update_mode='REVENUE_REBALANCE_UPDATE', shock_option='EMISSIONS_INTENSITY_SHOCK', forecast_shock=True, 
+                     forecast_uncertainty_increment=FORECAST_UNCERTAINTY_INCREMENT, revenue_target='neutral', renewables_eligibility='ineligible')
 # Baseline
-x_b8, y_b8 = get_case_data(run_id=r8, series_name='baseline')
+x_b8, y_b8 = Case.get_case_data(case_id=r8, series_name='baseline')
 
 # Rolling scheme revenue
-x_r8, y_r8 = get_case_data(run_id=r8, series_name='rolling_scheme_revenue_interval_end')
+x_r8, y_r8 = Case.get_case_data(case_id=r8, series_name='rolling_scheme_revenue_interval_end')
 
 
 # Revenue target case - emissions intensity shock - MPC
 # -----------------------------------------------------
 # Run ID
-r9 = get_case_run_id(update_mode='MPC_UPDATE', shock_option='EMISSIONS_INTENSITY_SHOCK', anticipated_shock=False, 
-                     forecast_uncertainty_increment=0.05, revenue_neutral=True, renewables_eligible=False)
+r9 = Case.get_case_id(update_mode='MPC_UPDATE', shock_option='EMISSIONS_INTENSITY_SHOCK', forecast_shock=True, 
+                     forecast_uncertainty_increment=FORECAST_UNCERTAINTY_INCREMENT, revenue_target='neutral', renewables_eligibility='ineligible')
 # Baseline
-x_b9, y_b9 = get_case_data(run_id=r9, series_name='baseline')
+x_b9, y_b9 = Case.get_case_data(case_id=r9, series_name='baseline')
 
 # Rolling scheme revenue
-x_r9, y_r9 = get_case_data(run_id=r9, series_name='rolling_scheme_revenue_interval_end')
+x_r9, y_r9 = Case.get_case_data(case_id=r9, series_name='rolling_scheme_revenue_interval_end')
 
 
-# In[ ]:
+# In[8]:
 
 
 plt.clf()
@@ -583,9 +530,49 @@ cm_to_in = 0.393701
 fig.set_size_inches(width*cm_to_in, height*cm_to_in)
 
 # fig.subplots_adjust(left=0.07, bottom=0.135, right=0.99, top=0.98, wspace=0.2, hspace=0.2)
-fig.savefig('test.png', dpi=800)
+# fig.savefig('test.png', dpi=800)
 
 plt.show()
+
+
+# Check that forecast and benchmark are the same
+
+# In[ ]:
+
+
+Case.case_summaries
+
+
+# In[ ]:
+
+
+# CT - EM shock
+r_1 = '7366772B'
+
+# Rev rebal update - EM shock
+r_2 = '0369A036'
+
+# A81AC7D5
+
+
+# In[ ]:
+
+
+_, benchmark = Case.get_case_data(r_1, 'total_emissions_tCO2')
+
+_, update = Case.get_case_data(r_2, 'total_emissions_tCO2')
+
+
+# In[ ]:
+
+
+benchmark
+
+
+# In[ ]:
+
+
+update
 
 
 # Create table

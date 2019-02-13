@@ -13,22 +13,38 @@ class Updater:
         # Forecast total emissions in next calibration [tCO2]
         total_emissions = sum(forecast_generator_energy[calibration_interval][1][g] * forecast_emissions_intensities[calibration_interval][1][g] for g in model_object.model.OMEGA_G)
 
+        print(f'\n Update forecast total emissions for interval {calibration_interval}: {total_emissions}')
+
         # Forecast regulated generator energy
         regulated_generator_energy = sum(forecast_generator_energy[calibration_interval][1][g] for g in model_object.model.OMEGA_G)
 
         # Forecast energy from intermittent reneweable generators (possibly under policy's remit)
         intermittent_energy = forecast_intermittent_energy[calibration_interval][1]
 
+        print(f'Update forecast generator intermittent energy for interval {calibration_interval}: {intermittent_energy}')
+
         # Forecast regulated generator energy in next period. Value may change depending on whether or not
         # intermittent generators are subject to the scheme's remit.
 
         # Indicates if renewables are eligible for payments (eligible = True, ineligible = False)
-        if renewables_eligibility:
+        if renewables_eligibility == 'eligible':
             # Intermittent generators are part of scheme's remit, and receive payments
             regulated_generator_energy += intermittent_energy
 
+        print(f'Update forecast regulated generator energy {calibration_interval}: {regulated_generator_energy}')
+
         # Forecast regulated generator average emissions intensity
-        average_emissions_intensity = regulated_generator_energy / total_emissions
+        average_emissions_intensity = total_emissions / regulated_generator_energy
+
+        print(f'Update forecast average emissions intensity {calibration_interval}: {average_emissions_intensity}')
+
+        print(f'Update forecast target scheme revenue {calibration_interval}: {target_scheme_revenue[calibration_interval][1]}')
+
+        print(f'Update forecast scheme revenue interval start {calibration_interval}: {scheme_revenue_interval_start}')
+
+        print(f'Update forecast permit price {calibration_interval}: {permit_price}')
+
+        print(f'Update forecast regulated generator energy (in formula) {calibration_interval}: {regulated_generator_energy}')
 
         # Update baseline seeking to re-balance net scheme revenue every period based on forecast output
         baseline = average_emissions_intensity - ((target_scheme_revenue[calibration_interval][1] - scheme_revenue_interval_start) / (permit_price * regulated_generator_energy))
@@ -36,6 +52,8 @@ class Updater:
         # Set baseline to 0 if updated value less than zero
         if baseline < 0:
             baseline = 0
+
+        print(f'Update baseline: {baseline} \n')
 
         return baseline
 
