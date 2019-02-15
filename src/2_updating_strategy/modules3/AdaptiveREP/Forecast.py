@@ -8,6 +8,8 @@ import pandas as pd
 
 
 class ConstructForecast:
+    """Construct forecasts to be used in updating model"""
+
     def __init__(self, output_dir, case_options):
         # Directory containing benchmark case results. Using these data to construct forecasts signals.
         self.output_dir = output_dir
@@ -21,13 +23,13 @@ class ConstructForecast:
         # Generator emissions intensity forecast
         self.generator_emissions_intensities = self.get_forecast('generator_emissions_intensities')
 
-        # Intermittent energy
+        # Intermittent energy forecast
         self.intermittent_energy = self.get_forecast('intermittent_energy')
 
     def _load_calibration_interval_metrics(self, case_id):
         "Load week metrics for given case_id"
 
-        # Load weekly results for given case_id
+        # Load calibration interval results for given a case_id
         with open(os.path.join(self.output_dir, f'{case_id}_calibration_interval_metrics.pickle'), 'rb') as f:
             week_metrics = pickle.load(f)
 
@@ -61,19 +63,30 @@ class ConstructForecast:
         # Container for dictionaries summarising model runs
         case_summaries = []
 
-        # Open each run summary file and compile in a single dictionary
+        # Open each run summary file and collate into a single dictionary
         for i in case_summary_files:
             with open(os.path.join(self.output_dir, i), 'rb') as f:
                 # Load run summary from file
                 case_summary = pickle.load(f)
 
-                # Append to dictionary collating all run summaries
+                # Append to dictionary collating all case summaries
                 case_summaries.append(case_summary)
 
         return pd.DataFrame(case_summaries).set_index('case_id')
 
     def _get_benchmark_case_id(self, shock_option):
-        """Identify run ID used for forecasts based on model parameters"""
+        """Identify benchmark model case ID used for forecasts based on model parameters
+
+        Parameters
+        ----------
+        shock_option : type of shock
+            Either NO_SHOCKS or EMISSIONS_INTENSITY_SHOCK.
+
+        Returns
+        -------
+        forecast_case_id : str
+            Case ID for benchmark model results that should be used to construct forecast.
+        """
 
         # Summary of all models which have been run
         case_summaries = self._get_case_summaries()
@@ -84,13 +97,12 @@ class ConstructForecast:
                 & (case_summaries['initial_permit_price'] == self.case_options.get('initial_permit_price'))
                 & (case_summaries['model_horizon'] == self.case_options.get('model_horizon')))
 
-        # Check there is only one matching run ID
+        # Check there is only one matching case ID
         if len(case_summaries.loc[mask]) != 1:
             raise(Exception(f'Should only encounter one case_id with given parameters, encountered: {case_summaries.loc[mask]}'))
         else:
-            # case_id for the benchmark case that will be used to generate forecast signals
+            # Case ID for the benchmark case that will be used to generate forecast signals
             forecast_case_id = case_summaries.loc[mask].index[0]
-            print(f'Forecast benchmark case ID: {forecast_case_id}')
 
             return forecast_case_id
 
@@ -100,16 +112,17 @@ class ConstructForecast:
 
         Parameters
         ----------
-        case_id : str
-            ID for run already completed that will result in same emissions / energy output profiles
+        forecast_type : str
+            Type of forecast to be generated. Options: 'generator_energy', 'generator_emissions_intensities',
+            and 'intermittent_energy'
 
-        forecast_intervals : int
-            Number of intervals the forecast should be constructed for
+        benchmark_case_id : str
+            ID for case already completed that will result in same emissions / energy output profiles
 
         Returns
         -------
-        forecast_generator_energy : dict
-            Perfect forecast for generator energy output in each week
+        forecast : dict
+            Forecast values
         """
 
         # Week metrics for benchmark case
@@ -162,7 +175,25 @@ class ConstructForecast:
         return forecast
 
     def _overlap_forecasts(self, forecast_1, forecast_2, overlap_intervals):
-        "Overlap values from forecast 1 onto forecast 2"
+        """Given two forecast signals, overlap values from forecast 1 onto forecast 2
+
+        Parameters
+        ----------
+        forecast_1 : dict
+            First forecast
+
+        forecast_2 : dict
+            Second forecast
+
+        overlap_intervals : int
+            Ovlap forecast 1 values onto forecast 2 up until overlap_intervals
+
+        Returns
+        -------
+        forecast_2 : dict
+            Forecast 2, with the first overlap_intervals intervals taking the
+            value from forecast 1
+        """
 
         # Assign values from forecast 1 to values for forecast 2 for overlap_intervals
         for i in range(1, overlap_intervals + 1):
@@ -171,7 +202,19 @@ class ConstructForecast:
         return forecast_2
 
     def get_forecast(self, forecast_type):
-        "Get forecast"
+        """Generate forecast
+
+        Parameters
+        ----------
+        forecast_type : str
+            Type of forecast to be generated. Options: 'generator_energy', 'generator_emissions_intensities',
+            and 'intermittent_energy'
+
+        Returns
+        -------
+        forecast : dict
+            Forecast values
+        """
 
         # Benchmark case corresponding to model parameters
         benchmark_case_id = self._get_benchmark_case_id(shock_option=self.case_options.get('shock_option'))
@@ -179,7 +222,7 @@ class ConstructForecast:
         # Forecast based on benchmark corresponding to case options
         forecast = self._get_benchmark_forecast(forecast_type, benchmark_case_id)
 
-        # If a forecast shock is specified
+        # If a forecast shock is specified, overlap shock and no-shock forecasts
         if ('forecast_shock' in self.case_options) and (self.case_options.get('forecast_shock')):
             # Benchmark case corresponding to no-shock benchmark case
             benchmark_case_id_no_shock = self._get_benchmark_case_id(shock_option='NO_SHOCKS')

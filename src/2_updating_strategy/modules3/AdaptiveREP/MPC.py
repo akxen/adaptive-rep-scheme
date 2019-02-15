@@ -1,12 +1,25 @@
+"""Model Predictive Controller used to update emissions intensity baseline"""
+
 from collections import OrderedDict
 
 from pyomo.environ import *
 
 
 class MPCModel:
-    "Model Predictive Controller used to update emissions intensity baseline"
+    """Model Predictive Controller used to update emissions intensity baseline"""
 
     def __init__(self, generator_index, forecast_intervals):
+        """Initialise MPC controller parameters
+
+        Parameters
+        ----------
+        generator_index : list
+            Dispatchable geneators in power-flow model
+
+        forecast_intervals : int
+            Forecast horizon for MPC controller
+        """
+
         # Create model object
         self.model = self.mpc_baseline(generator_index=generator_index, forecast_intervals=forecast_intervals)
 
@@ -129,9 +142,12 @@ class MPCModel:
         # For each time interval in the forecast horizon
         for t in self.model.OMEGA_T:
 
+            # If renewbales are eligible for given interval, update indicator parameter
             if renewables_eligibility[t]:
+                # Renewables are eligible to receive payments for given interval
                 self.model.RENEWABLES_ELIGIBILITY_INDICATOR[t] = float(1)
             else:
+                # Renewables are ineligble to receive payments for given interval
                 self.model.RENEWABLES_ELIGIBILITY_INDICATOR[t] = float(0)
 
             # For each generator
@@ -151,19 +167,19 @@ class MPCModel:
         # Emissions intensity baseline from previous period
         self.model.BASELINE_INTERVAL_START = float(baseline_interval_start)
 
-        # Initial rolling scheme revenue
+        # Initial rolling scheme revenue at start of interval
         self.model.SCHEME_REVENUE_INTERVAL_START = float(scheme_revenue_interval_start)
 
-        # Rolling scheme revenue target at end of forecast horizon
+        # Target rolling scheme revenue at end of forecast horizon
         self.model.TARGET_SCHEME_REVENUE = float(target_scheme_revenue)
 
     def solve_model(self):
-        "Solve for optimal emissions intensity baseline path"
+        """Solve for optimal emissions intensity baseline path"""
 
         self.opt.solve(self.model)
 
     def get_optimal_baseline_path(self):
-        "Get optimal emissions intenstiy baseline path based on MPC controller"
+        """Get optimal emissions intenstiy baseline path based on MPC controller"""
 
         # Optimal emissions intensity baseline path as determined by MPC controller
         optimal_baseline_path = OrderedDict(self.model.phi.get_values())
@@ -171,12 +187,12 @@ class MPCModel:
         return optimal_baseline_path
 
     def get_next_baseline(self):
-        "Get next baseline to be implemented for the coming week"
+        """Get next baseline to be implemented for the coming week"""
 
         # Optimal path of baselines to be implemented over the finite horizon
         optimal_baseline_path = self.get_optimal_baseline_path()
 
-        # Next 'optimal' emissions intensity baseline to implement for the coming interval
+        # Next 'optimal' emissions intensity baseline to implemented for the coming interval
         next_baseline = float(optimal_baseline_path[self.model.OMEGA_T.first()])
 
         return next_baseline

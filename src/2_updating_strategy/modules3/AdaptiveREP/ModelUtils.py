@@ -1,3 +1,5 @@
+"""Utilities used when running agent-based simulation"""
+
 import pickle
 import hashlib
 
@@ -6,7 +8,17 @@ import pandas as pd
 
 
 class RecordResults:
+    """Record model results"""
+
     def __init__(self, case_options):
+        """Initialise results containers
+
+        Parameters
+        ----------
+        case_options : dict
+            Dictionary of options specifying case parameters
+        """
+
         # Result containers
         # -----------------
         # Prices at each node for each scenario
@@ -49,13 +61,27 @@ class RecordResults:
         self.case_summary = self.summarise_model_inputs(case_options)
 
     def summarise_model_inputs(self, case_options):
-        "Summary of all parameters used for the given scenario"
+        """Summary of all parameters used for the given scenario
+
+        Parameters
+        ----------
+        case_options : dict
+            Case parameters
+
+        Returns
+        -------
+        case_summary : dict
+            Summary of case parameters, including a unique ID (based on hashed values
+            of model inputs)
+        """
+
+        # Parameters used for case
         parameter_values = [case_options[i] for i in sorted(case_options, key=str.lower)]
 
         # Convert parameters to string
         parameter_values_string = ''.join([str(i) for i in parameter_values])
 
-        # Find sha256 of parameter values - used as a unique identifier for the model run
+        # Find sha256 of parameter values - used as a unique identifier for the case
         case_id = hashlib.sha256(parameter_values_string.encode('utf-8')).hexdigest()[:8].upper()
 
         # Summary of model options, identified by the hash value of these options
@@ -64,7 +90,19 @@ class RecordResults:
         return case_summary
 
     def store_scenario_results(self, model_object, calibration_interval, scenario_index):
-        "Store results from each scenario"
+        """Store results from each scenario
+
+        Parameters
+        ----------
+        model_object : pyomo model object
+            Power flow model object
+
+        calibration_interval : int
+            Index of calibration interval being investigated
+
+        scenario_index : int
+            Index of scenario being investigated
+        """
 
         # Nodal prices
         self.scenario_nodal_prices[(calibration_interval, scenario_index)] = {n: model_object.model.dual[model_object.model.POWER_BALANCE[n]] for n in model_object.model.OMEGA_N}
@@ -99,7 +137,19 @@ class RecordResults:
         self.scenario_metrics['energy_revenue'][(calibration_interval, scenario_index)] = sum(model_object.model.dual[model_object.model.POWER_BALANCE[n]] * model_object.model.BASE_POWER.value * model_object.model.D[n].value * model_object.model.BASE_POWER.value * model_object.model.SCENARIO_DURATION.value for n in model_object.model.OMEGA_N)
 
     def store_calibration_interval_metrics(self, model_object, calibration_interval, case_options):
-        "Compute aggregate statistics for given calibration interval"
+        """Compute aggregate statistics for given calibration interval
+
+        Parameters
+        ----------
+        model_object : pyomo model object
+            Power flow model object
+
+        calibration_interval : int
+            Index of calibration interval being investigated
+
+        case_options : dict
+            Dictionary describing case parameters
+        """
 
         # Net scheme revenue from regulated 'fossil' generators for each calibration interval [$]
         self.calibration_interval_metrics['net_scheme_revenue_dispatchable_generators'][calibration_interval] = sum(self.scenario_metrics['net_scheme_revenue_dispatchable_generators'][(calibration_interval, s)] for s in model_object.df_scenarios.columns.levels[1])
@@ -107,19 +157,19 @@ class RecordResults:
         # Net scheme revenue that would need to be paid to intermittent renewables each calibration interval if included in scheme [$]
         self.calibration_interval_metrics['net_scheme_revenue_intermittent_generators'][calibration_interval] = sum(self.scenario_metrics['net_scheme_revenue_intermittent_generators'][(calibration_interval, s)] for s in model_object.df_scenarios.columns.levels[1])
 
-        # Emissions intensities for regulated generators for the given calibration interval
+        # Emissions intensities for dispatchable generators for the given calibration interval
         self.calibration_interval_metrics['dispatchable_generator_emissions_intensities'][calibration_interval] = {g: model_object.model.E_HAT[g].expr() for g in model_object.model.OMEGA_G}
 
         # Total emissions [tCO2]
         self.calibration_interval_metrics['total_emissions_tCO2'][calibration_interval] = sum(self.scenario_metrics['total_emissions_tCO2'][(calibration_interval, s)] for s in model_object.df_scenarios.columns.levels[1])
 
-        # Calibration interval energy output for each generator
+        # Dispatchable generator energy output [MWh]
         self.calibration_interval_metrics['dispatchable_generator_energy_MWh'][calibration_interval] = {g: sum(self.scenario_metrics['dispatchable_generator_energy_MWh'][(calibration_interval, s)][g] for s in model_object.df_scenarios.columns.levels[1]) for g in model_object.model.OMEGA_G}
 
-        # Total output from generators subjected to emissions intensity policy [MWh]
+        # Total output from generators subjected to emissions policy [MWh]
         self.calibration_interval_metrics['total_dispatchable_generator_energy_MWh'][calibration_interval] = sum(self.scenario_metrics['total_dispatchable_generator_energy_MWh'][(calibration_interval, s)] for s in model_object.df_scenarios.columns.levels[1])
 
-        # Total energy from intermittent generators [MWh] (these incumbent generators are generally not subjected to policy)
+        # Total energy from intermittent generators [MWh] (these incumbent generators are generally not eligible for payments)
         self.calibration_interval_metrics['total_intermittent_energy_MWh'][calibration_interval] = sum(self.scenario_metrics['total_intermittent_energy_MWh'][(calibration_interval, s)] for s in model_object.df_scenarios.columns.levels[1])
 
         # Total energy demand in given calibration interval [MWh]
@@ -139,42 +189,69 @@ class RecordResults:
             # Net scheme revenue when intermittent renewables are covered by policy [$]
             self.calibration_interval_metrics['net_scheme_revenue'][calibration_interval] = self.calibration_interval_metrics['net_scheme_revenue_dispatchable_generators'][calibration_interval] + self.calibration_interval_metrics['net_scheme_revenue_intermittent_generators'][calibration_interval]
 
-            # Average emissions intensity of all generators subject to emissions policy generators when renewables included [tCO2/MWh]
+            # Average emissions intensity of all generators subject to emissions policy when renewables included [tCO2/MWh]
             self.calibration_interval_metrics['average_emissions_intensity_regulated_generators'][calibration_interval] = self.calibration_interval_metrics['total_emissions_tCO2'][calibration_interval] / (self.calibration_interval_metrics['total_dispatchable_generator_energy_MWh'][calibration_interval] + self.calibration_interval_metrics['total_intermittent_energy_MWh'][calibration_interval])
 
         else:
             # Net scheme revenue when existing renewables not covered by policy [$]
             self.calibration_interval_metrics['net_scheme_revenue'][calibration_interval] = self.calibration_interval_metrics['net_scheme_revenue_dispatchable_generators'][calibration_interval]
 
-            # Average emissions intensity of all generators subject to emissions policy when renewables included [tCO2/MWh]
+            # Average emissions intensity of all generators subject to emissions policy when renewables not included [tCO2/MWh]
             self.calibration_interval_metrics['average_emissions_intensity_regulated_generators'][calibration_interval] = self.calibration_interval_metrics['total_emissions_tCO2'][calibration_interval] / self.calibration_interval_metrics['total_dispatchable_generator_energy_MWh'][calibration_interval]
 
         # Record rolling scheme revenue at end of calibration interval [$]
         self.calibration_interval_metrics['rolling_scheme_revenue_interval_end'][calibration_interval] = self.calibration_interval_metrics['rolling_scheme_revenue_interval_start'][calibration_interval] + self.calibration_interval_metrics['net_scheme_revenue'][calibration_interval]
 
     def save_results(self, output_dir, model_object):
-        "Save results "
+        """Save results
+
+        Parameters
+        ----------
+        output_dir : str
+            Directory for model results files
+
+        model_object : pyomo model object
+            Pyomo object used to construct power-flow model
+        """
+
+        # Save scenario nodal prices
         with open(f"{output_dir}/{self.case_summary['case_id']}_scenario_nodal_prices.pickle", 'wb') as f:
             pickle.dump(self.scenario_nodal_prices, f)
 
+        # Save scenario power output from individual generators
         with open(f"{output_dir}/{self.case_summary['case_id']}_scenario_power_output.pickle", 'wb') as f:
             pickle.dump(self.scenario_power_output, f)
 
+        # Save scenario metrics
         with open(f"{output_dir}/{self.case_summary['case_id']}_scenario_metrics.pickle", 'wb') as f:
             pickle.dump(self.scenario_metrics, f)
 
+        # Save calibration interval metrics
         with open(f"{output_dir}/{self.case_summary['case_id']}_calibration_interval_metrics.pickle", 'wb') as f:
             pickle.dump(self.calibration_interval_metrics, f)
 
+        # Save case summary
         with open(f"{output_dir}/{self.case_summary['case_id']}_case_summary.pickle", 'wb') as f:
             pickle.dump(self.case_summary, f)
 
+        # Save generators information (note: SRMCs are perturbed when loading data. Good to keep track
+        # of generator cost data used in analysis)
         with open(f"{output_dir}/{self.case_summary['case_id']}_generators.pickle", 'wb') as f:
             pickle.dump(model_object.df_g, f)
 
 
 class Utils:
+    """General utilities useful when running model"""
+
     def __init__(self, case_options):
+        """General model utilities
+
+        Parameters
+        ----------
+        case_options : dict
+            Description of case parameters
+        """
+
         # Options describing case
         self.case_options = case_options
 
@@ -183,16 +260,16 @@ class Utils:
 
         Parameters
         ----------
-        calibration_interval_input : dict
-            Target or indicator given corresponds to a given calibration interval
-
-        forecast_intervals : int
-            Number of forecast intervals if using MPC. Default = 1.
+        input_data : dict
+            Target or indicator data corresponding to calibration intervals
 
         Returns
         -------
-        intermittent_generators_regulated : dict
-            Formatted dictionary denoting whether renewables are eligible in following periods.
+        formatted_input : dict
+            Formatted dictionary converting input_data into format that can be consumed by different model components.
+            First key is calibration interval, second key is forecast interval e.g. {1 : {1: x, 2: y}}. First key is
+            calibration interval, 1st key in inner dict corresponds to first forecast interval, yielding x, 2nd key
+            corresponds to second forecast interval, yielding y.
         """
 
         # Container for formatted input values
@@ -213,7 +290,7 @@ class Utils:
         return formatted_input
 
     def case_options_valid(self):
-        "Check that model options are valid"
+        """Check that model options are valid"""
 
         if 'update_mode' not in self.case_options:
             raise(Exception('Must specify an update mode'))
@@ -234,14 +311,32 @@ class Utils:
 
 
 class ApplyShock(RecordResults):
+    """Apply shock to model"""
+
     def __init__(self, output_dir, case_options):
+        """Load methods used to record model results"""
         super().__init__(case_options)
 
+        # Directory for model output files
         self.output_dir = output_dir
+
+        # Options corresponding to case being investigated
         self.case_options = case_options
 
     def apply_emissions_intensity_shock(self, model_object):
-        "Data used to update emissions intensities for generators if shock occurs"
+        """Data used to update emissions intensities for generators if shock occurs
+
+        Parameters
+        ----------
+        model_object : pyomo model object
+            Power-flow model object
+
+
+        Returns
+        -------
+        model_object : pyomo model object
+            Power-flow model object with updated (shocked) generator emissions intensities.
+        """
 
         # Set seed so random shocks can be reproduced
         np.random.seed(self.case_options.get('seed'))

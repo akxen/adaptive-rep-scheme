@@ -9,7 +9,7 @@ from AdaptiveREP import Simulator, Cases
 # Core data directory
 data_dir = os.path.join(os.path.curdir, os.path.pardir, os.path.pardir, os.path.pardir, 'data')
 
-# Directory containing representative scenario data for each calibration interval (week)
+# Directory containing representative operating state data for each calibration interval (week)
 scenarios_dir = os.path.join(os.path.curdir, os.path.pardir, os.path.pardir, '1_create_scenarios', 'output')
 
 # Directory for output files
@@ -19,21 +19,22 @@ output_dir = os.path.join(os.path.curdir, 'output')
 # Run model
 # ---------
 # Benchmark cases
-# for case_options in Cases.benchmark_cases:
-#     # Object used to run agent-based simulation
-#     Sim = Simulator.RunSimulator(data_dir=data_dir, scenarios_dir=scenarios_dir, output_dir=output_dir, **case_options)
+for case_options in Cases.benchmark_cases:
+    # Object used to run agent-based simulation
+    Sim = Simulator.RunSimulator(data_dir=data_dir, scenarios_dir=scenarios_dir, output_dir=output_dir, **case_options)
 
-#     # Unique ID corresponding to case
-#     case_id = Sim.run_case()
+    # Run case. Returns unique ID corresponding to case.
+    case_id = Sim.run_case()
 
-#     print(f'Finished case: {case_id}')
+    print(f'Finished case: {case_id}')
+
 
 # Baseline updating cases
 for case_options in Cases.updating_cases:
     # Object used to run agent-based simulation
     Sim = Simulator.RunSimulator(data_dir=data_dir, scenarios_dir=scenarios_dir, output_dir=output_dir, **case_options)
 
-    # Unique ID corresponding to case
+    # Run case. Returns unique ID corresponding to case.
     case_id = Sim.run_case()
 
     print(f'Finished case: {case_id}')

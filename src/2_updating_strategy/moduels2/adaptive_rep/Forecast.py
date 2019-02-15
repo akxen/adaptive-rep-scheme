@@ -81,9 +81,8 @@ class ConstructForecast:
 
             return forecast_run_id
 
-    def get_forecast(self, forecast_type, forecast_intervals, forecast_uncertainty_increment, shock_option, initial_permit_price, model_horizon):
-        """Get perfect forecasts for dispatchable generater energy, emissions intensities, and
-        intermittent energy based on benchmark model results
+    def get_perfect_generator_energy_forecast(self, benchmark_run_id, forecast_intervals):
+        """Get perfect forecast for energy and emissions intensities based on benchmark model results
 
         Parameters
         ----------
@@ -98,9 +97,66 @@ class ConstructForecast:
         forecast_generator_energy : dict
             Perfect forecast for generator energy output in each week
         """
+        # Total number of intervals in model horizon
+        model_horizon = self._get_model_horizon(benchmark_run_id)
 
-        # Benchmark case corresponding to model parameters
-        benchmark_run_id = self._get_benchmark_run_id(shock_option, initial_permit_price, model_horizon)
+        # Week metrics for benchmark case
+        benchmark_week_metrics = self._load_week_metrics(run_id=benchmark_run_id)
+
+        # Forecast dispatchable generator energy
+        forecast_generator_energy = {i: {j + 1: benchmark_week_metrics['dispatchable_generator_energy_MWh'][i + j] for j in range(0, forecast_intervals)} for i in range(1, model_horizon + 1 - forecast_intervals + 1)}
+
+        return forecast_generator_energy
+
+    def get_perfect_intermittent_energy_forecast(self, benchmark_run_id, forecast_intervals):
+        """Get perfect forecast for intermittent energy output based on benchmark model results
+
+        Parameters
+        ----------
+        output_dir : str
+            Directory containing benchmark simulation results
+
+        run_id : str
+            ID for run already completed that will result in same emissions / energy output profiles
+
+        forecast_intervals : int
+            Number of intervals the forecast should be constructed for
+
+        Returns
+        -------
+        forecast_intermittent_energy : dict
+            Perfect forecast for intermittent energy output in each week in forecast horizon
+        """
+        # Total number of intervals in model horizon
+        model_horizon = self._get_model_horizon(benchmark_run_id)
+
+        # Week metrics for benchmark case
+        benchmark_week_metrics = self._load_week_metrics(run_id=benchmark_run_id)
+
+        # Forecast energy output from intermittent sources
+        forecast_intermittent_energy = {i: {j + 1: benchmark_week_metrics['total_intermittent_energy_MWh'][i + j] for j in range(0, forecast_intervals)} for i in range(1, model_horizon + 1 - forecast_intervals + 1)}
+
+        return forecast_intermittent_energy
+
+    def get_perfect_generator_emissions_intensity_forecast(self, benchmark_run_id, forecast_intervals):
+        """Get perfect forecast for generator emissions intensities based on benchmark model results
+
+        Parameters
+        ----------
+        output_dir : str
+            Directory containing benchmark simulation results
+
+        run_id : str
+            ID for run already completed that will result in same emissions / energy output profiles
+
+        forecast_intervals : int
+            Number of intervals the forecast should be constructed for
+
+        Returns
+        -------
+        forecast_generator_emissions_intensity : dict
+            Perfect forecast for generator emissions intensities in forecast horizon
+        """
 
         # Total number of intervals in model horizon
         model_horizon = self._get_model_horizon(benchmark_run_id)
@@ -108,26 +164,116 @@ class ConstructForecast:
         # Week metrics for benchmark case
         benchmark_week_metrics = self._load_week_metrics(run_id=benchmark_run_id)
 
-        if forecast_type == 'generator_energy':
-            # Forecast dispatchable generator energy
-            forecast = {week:
-                        {j + 1:
-                         {duid: np.random.uniform(1 - (forecast_uncertainty_increment * (j + 1)), 1 + (forecast_uncertainty_increment * (j + 1))) * output for duid, output in benchmark_week_metrics['dispatchable_generator_energy_MWh'][week + j].items()}
-                         for j in range(0, forecast_intervals)}
-                        for week in range(1, model_horizon + 1 - forecast_intervals + 1)}
+        # Forecast generator emissions intensities
+        forecast_generator_emissions_intensities = {i: {j + 1: benchmark_week_metrics['dispatchable_generator_emissions_intensities'][i + j] for j in range(0, forecast_intervals)} for i in range(1, model_horizon + 1 - forecast_intervals + 1)}
 
-        elif forecast_type == 'generator_emissions_intensities':
-            forecast = {i:
-                        {j + 1: benchmark_week_metrics['dispatchable_generator_emissions_intensities'][i + j] for j in range(0, forecast_intervals)}
-                        for i in range(1, model_horizon + 1 - forecast_intervals + 1)}
+        return forecast_generator_emissions_intensities
 
-        elif forecast_type == 'intermittent_energy':
-            forecast = {i:
-                        {j + 1: np.random.uniform(1 - (forecast_uncertainty_increment * (j + 1)), 1 + (forecast_uncertainty_increment * (j + 1))) * benchmark_week_metrics['total_intermittent_energy_MWh'][i + j] for j in range(0, forecast_intervals)} for i in range(1, model_horizon + 1 - forecast_intervals + 1)}
-        else:
-            raise(Exception(f'Unexpected forecast_type encountered: {forecast_type}'))
+    def get_perturbed_generator_energy_forecast(self, benchmark_run_id, forecast_intervals, forecast_uncertainty_increment):
+        """Get perturbed generator energy forecast
 
-        return forecast
+        Parameters
+        ----------
+        benchmark_run_id : str
+            Run ID of benchmark case used to construct forecast signals
+
+        forecast_intervals : int
+            Number of intervals to forecast into the future
+
+        forecast_uncertainty_increment : float
+            Percentage uncertainty to be used in scaling factor for each week. E.g. if 0.05, then
+            the first week's (perfect) forecast will be scaled by a uniformly distributed random number
+            in the interval (0.95, 1.05), if the second week it will be scaled by a number in the interval
+            (0.9, 1.1) and so on.
+
+
+        Returns
+        -------
+        perturbed_forecast : dict
+            Forecasted values with some uncertainty
+        """
+
+        # Perfect forecast
+        perfect_forecast = self.get_perfect_generator_energy_forecast(benchmark_run_id=benchmark_run_id, forecast_intervals=forecast_intervals)
+
+        # Perturbed forecast
+        perturbed_forecast = {key_1:
+                              {key_2:
+                               {key_3: value_3 * np.random.uniform(1 - (forecast_uncertainty_increment * key_2), 1 + (forecast_uncertainty_increment * key_2))
+                                for key_3, value_3 in value_2.items()} for key_2, value_2 in value_1.items()}
+                              for key_1, value_1 in perfect_forecast.items()}
+
+        return perturbed_forecast
+
+    def get_perturbed_generator_emissions_intensity_forecast(self, benchmark_run_id, forecast_intervals, forecast_uncertainty_increment):
+        """Get perturbed generator emissions intensity forecast
+
+        Parameters
+        ----------
+        benchmark_run_id : str
+            Run ID of benchmark case used to construct forecast signals
+
+        forecast_intervals : int
+            Number of intervals to forecast into the future
+
+        forecast_uncertainty_increment : float
+            Percentage uncertainty to be used in scaling factor for each week. E.g. if 0.05, then
+            the first week's (perfect) forecast will be scaled by a uniformly distributed random number
+            in the interval (0.95, 1.05), if the second week it will be scaled by a number in the interval
+            (0.9, 1.1) and so on.
+
+
+        Returns
+        -------
+        perturbed_forecast : dict
+            Forecasted values with some uncertainty
+        """
+
+        # Perfect forecast
+        perfect_forecast = self.get_perfect_generator_emissions_intensity_forecast(benchmark_run_id=benchmark_run_id, forecast_intervals=forecast_intervals)
+
+        # Perturbed forecast
+        perturbed_forecast = {key_1:
+                              {key_2:
+                               {key_3: value_3 * np.random.uniform(1 - (forecast_uncertainty_increment * key_2), 1 + (forecast_uncertainty_increment * key_2))
+                                for key_3, value_3 in value_2.items()} for key_2, value_2 in value_1.items()}
+                              for key_1, value_1 in perfect_forecast.items()}
+
+        return perturbed_forecast
+
+    def get_perturbed_intermittent_energy_forecast(self, benchmark_run_id, forecast_intervals, forecast_uncertainty_increment):
+        """Get perturbed intermittent energy forecast
+
+        Parameters
+        ----------
+        benchmark_run_id : str
+            Run ID of benchmark case used to construct forecast signals
+
+        forecast_intervals : int
+            Number of intervals to forecast into the future
+
+        forecast_uncertainty_increment : float
+            Percentage uncertainty to be used in scaling factor for each week. E.g. if 0.05, then
+            the first week's (perfect) forecast will be scaled by a uniformly distributed random number
+            in the interval (0.95, 1.05), if the second week it will be scaled by a number in the interval
+            (0.9, 1.1) and so on.
+
+
+        Returns
+        -------
+        perturbed_forecast : dict
+            Forecasted values with some uncertainty
+        """
+
+        # Perfect forecast
+        perfect_forecast = self.get_perfect_intermittent_energy_forecast(benchmark_run_id=benchmark_run_id, forecast_intervals=forecast_intervals)
+
+        # Intermittent energy forecast (perturbed)
+        perturbed_forecast = {key_1:
+                              {key_2: value_2 * np.random.uniform(1 - (forecast_uncertainty_increment * key_1), 1 + (forecast_uncertainty_increment * key_1)) for key_2, value_2 in value_1.items()}
+                              for key_1, value_1 in perfect_forecast.items()}
+
+        return perturbed_forecast
 
     def get_incorrect_forecasts(self, shock_option, week_of_shock, initial_permit_price, model_horizon, forecast_intervals, forecast_type, forecast_uncertainty_increment):
         "Unforseen shock occurs"

@@ -1,26 +1,46 @@
 """Define cases to investigate"""
+
+# Parameters
+# ----------
+# Seed for random number generator
 SEED = 10
 
+# Number of calibration intervals
 MODEL_HORIZON = 52
 
+# Calibration interval index at which a structural (emissions intensity) shock occurs
 SHOCK_INDEX = 10
 
+# Permit price applying for all intervals [$/tCO2]
 PERMIT_PRICE = 40
 
+# Number of forecast intervals used by MPC controller
 FORECAST_INTERVALS_MPC = 6
 
+# Number of forecast intervals when revenue rebalancing
 FORECAST_INTERVALS_REVENUE_REBALANCE = 1
 
+# Used to scale forecast values. Realised (perfect forecast) values from benchmark cases
+# are scaled by a uniformly distributed random number in the interval, with interval widening by
+# FORECAST_UNCERTAINTY_INCREMENT when moving further into the future.
+# E.g. for the first calibration interval the scaling factor will be in (0.95, 1.05), for the second (0.9, 1.1)
 FORECAST_UNCERTAINTY_INCREMENT = 0.05
 
+# Scheme revenue during first week
 INITIAL_ROLLING_SCHEME_REVENUE = 0
 
+# If ramping scheme revenue, the calibration interval index at which revenue ramp begins
 START_REVENUE_RAMP_INDEX = 10
 
+# Number of intervals over which revenue is ramped
 REVENUE_RAMP_INTERVALS = 10
 
+# Amount the revenue target is incremented each calibration interval
 REVENUE_RAMP_INCREMENT = 3e6
 
+# Cases to investigate
+# --------------------
+# Benchmark cases (results used to generate forecasts for updating cases)
 benchmark_cases = [
     {'description': 'business as usual - no shocks',
      'model_horizon': MODEL_HORIZON,
@@ -98,7 +118,7 @@ benchmark_cases = [
      },
 ]
 
-
+# Updating cases
 updating_cases = [
     {'description': 'revenue rebalance update - revenue neutral target - no shocks - renewables ineligible',
      'model_horizon': MODEL_HORIZON,

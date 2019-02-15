@@ -33,7 +33,13 @@ class DCOPFModel(OrganisedData):
         self.scenario_index = None
 
     def create_model(self):
-        "Create model object"
+        """Create model object
+
+        Note: Normalising model by scaling values related to power by 100 MVA
+        (essentially using p.u. units). Also scaling prices by same factor (100)
+        to improve numerical stability (trying to keep short-run marginal cost values
+        between 0 and 1). Need to re-scale when analysing results.
+        """
 
         # Initialise model
         model = ConcreteModel()
@@ -158,8 +164,12 @@ class DCOPFModel(OrganisedData):
         # -----------
         # Power balance
         generator_node_map = self.get_generator_node_map(model.OMEGA_G)
+
+        # Dictionary defining relationships between nodes
+        # (given a node as the key, the value will be all nodes directly connected to it)
         network_graph = self.get_network_graph()
 
+        # Power balance at each node
         def POWER_BALANCE_RULE(model, n):
             return (- model.D[n]
                     + model.R[n]
@@ -191,13 +201,14 @@ class DCOPFModel(OrganisedData):
             return sum(model.B[n, m] * (model.theta[n] - model.theta[m]) for n, m in ac_limits.loc[j, 'branches'])
         model.AC_FLOW = Expression(model.OMEGA_J, rule=AC_FLOW_RULE)
 
+        # Limits on flows over individual branches
         def AC_POWER_FLOW_LIMIT_RULE(model, j):
             return model.AC_FLOW[j] - model.F[j] <= 0
         model.AC_POWER_FLOW_LIMIT = Constraint(model.OMEGA_J, rule=AC_POWER_FLOW_LIMIT_RULE)
 
         # Expressions
         # -----------
-        # Effective emissions intensity (original emissions intensity x scaling factor)
+        # Effective emissions intensities (original emissions intensity x scaling factor)
         def E_HAT_RULE(model, g):
             return model.E[g] * model.EMISSIONS_INTENSITY_SHOCK_FACTOR[g]
         model.E_HAT = Expression(model.OMEGA_G, rule=E_HAT_RULE)
@@ -208,7 +219,7 @@ class DCOPFModel(OrganisedData):
         # Total energy demand [MWh]
         model.TOTAL_ENERGY_DEMAND = Expression(expr=sum(model.D[n] * model.BASE_POWER * model.SCENARIO_DURATION for n in model.OMEGA_N))
 
-        # Total energy output from regulated generators [MWh]
+        # Total energy output from generators eligble for emissions payments [MWh]
         model.TOTAL_DISPATCHABLE_GENERATOR_ENERGY = Expression(expr=sum(model.p[g] * model.BASE_POWER * model.SCENARIO_DURATION for g in model.OMEGA_G))
 
         # Total energy from intermittent generators [MWh]
@@ -220,7 +231,7 @@ class DCOPFModel(OrganisedData):
         # Average emissions intensity of system [tCO2/MWh]
         model.AVERAGE_EMISSIONS_INTENSITY_SYSTEM = Expression(expr=model.TOTAL_EMISSIONS / model.TOTAL_ENERGY_DEMAND)
 
-        # Net scheme revenue from dispatchable 'fossil' generators[$]
+        # Net scheme revenue from dispatchable 'fossil' generators [$]
         model.NET_SCHEME_REVENUE_DISPATCHABLE_GENERATORS = Expression(expr=sum((model.E_HAT[g] - model.PHI) * model.p[g] * model.BASE_POWER * model.SCENARIO_DURATION * model.TAU * model.BASE_POWER for g in model.OMEGA_G))
 
         # Net scheme revenue that would need to be paid to intermittent renewables if included in scheme [$]
@@ -238,14 +249,8 @@ class DCOPFModel(OrganisedData):
 
         Parameters
         ----------
-        model : pyomo object
-            DCOPF OPF model
-
-        df_scenarios : pandas DataFrame
-            Demand and fixed power injection data for each calibration interval and each scenario
-
         calibration_interval : int
-            Index of calibration interval for which model should be run
+            Index of calibration interval for which model is to be run
 
         scenario_index : int
             Index of scenario that describes operating condition for the given calibration interval
@@ -255,26 +260,26 @@ class DCOPFModel(OrganisedData):
 
         permit price : float
             Permit price [$/tCO2]
-
-        Returns
-        -------
-        model : pyomo object
-            DCOPF model object with updated parameters.
         """
 
         # Update fixed nodal power injections
         for n in self.model.OMEGA_N:
+            # Update demand at each node
             self.model.D[n] = float(self.df_scenarios.loc[('demand', n), (calibration_interval, scenario_index)] / self.model.BASE_POWER.value)
+
+            # Update fixed injections from hydro generators
             self.model.HYDRO[n] = float(self.df_scenarios.loc[('hydro', n), (calibration_interval, scenario_index)] / self.model.BASE_POWER.value)
+
+            # Update fixed injections from intermittent renewables
             self.model.INTERMITTENT[n] = float(self.df_scenarios.loc[('intermittent', n), (calibration_interval, scenario_index)] / self.model.BASE_POWER.value)
 
-        # Update emissions intensity baseline
+        # Update emissions intensity baseline [tCO2/MWh]
         self.model.PHI = float(baseline)
 
-        # Update permit price
+        # Update permit price [$/tCO2]
         self.model.TAU = float(permit_price / self.model.BASE_POWER.value)
 
-        # Scenario duration
+        # Scenario duration [hrs]
         self.model.SCENARIO_DURATION = float(self.df_scenarios.loc[('hours', 'duration'), (calibration_interval, scenario_index)])
 
         # Update calibration interval index

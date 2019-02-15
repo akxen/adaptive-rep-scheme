@@ -197,7 +197,7 @@ Case.get_case_id_by_description(description='carbon tax - no shocks')
 Case.case_summaries
 
 
-# In[6]:
+# In[5]:
 
 
 Case.get_case_id(update_mode='MPC_UPDATE', 
@@ -208,7 +208,7 @@ Case.get_case_id(update_mode='MPC_UPDATE',
                  renewables_eligibility='ineligible')
 
 
-# In[7]:
+# In[6]:
 
 
 FORECAST_UNCERTAINTY_INCREMENT = 0.05
@@ -331,7 +331,7 @@ x_b9, y_b9 = Case.get_case_data(case_id=r9, series_name='baseline')
 x_r9, y_r9 = Case.get_case_data(case_id=r9, series_name='rolling_scheme_revenue_interval_end')
 
 
-# In[8]:
+# In[7]:
 
 
 plt.clf()
@@ -537,13 +537,13 @@ plt.show()
 
 # Check that forecast and benchmark are the same
 
-# In[ ]:
+# In[8]:
 
 
 Case.case_summaries
 
 
-# In[ ]:
+# In[9]:
 
 
 # CT - EM shock
@@ -555,7 +555,7 @@ r_2 = '0369A036'
 # A81AC7D5
 
 
-# In[ ]:
+# In[10]:
 
 
 _, benchmark = Case.get_case_data(r_1, 'total_emissions_tCO2')
@@ -563,13 +563,13 @@ _, benchmark = Case.get_case_data(r_1, 'total_emissions_tCO2')
 _, update = Case.get_case_data(r_2, 'total_emissions_tCO2')
 
 
-# In[ ]:
+# In[11]:
 
 
 benchmark
 
 
-# In[ ]:
+# In[12]:
 
 
 update
@@ -577,7 +577,7 @@ update
 
 # Create table
 
-# In[ ]:
+# In[13]:
 
 
 import numpy as np
