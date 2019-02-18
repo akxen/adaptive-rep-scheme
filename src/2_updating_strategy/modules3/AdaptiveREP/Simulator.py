@@ -99,6 +99,9 @@ class RunSimulator:
       # Revenue Target
       Target = RevenueTarget(case_options=self.case_options)
 
+      # Add revenue target dictionary to case options
+      case_options['target_scheme_revenue'] = Target.revenue_target
+
       # Defines if renewables are eligible for payments under scheme
       Eligibility = RenewablesEligibility(case_options=self.case_options)
 

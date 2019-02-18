@@ -563,43 +563,31 @@ _, benchmark = Case.get_case_data(r_1, 'total_emissions_tCO2')
 _, update = Case.get_case_data(r_2, 'total_emissions_tCO2')
 
 
-# In[11]:
-
-
-benchmark
-
-
-# In[12]:
-
-
-update
-
-
 # Create table
 
-# In[13]:
+# In[15]:
 
 
 import numpy as np
 
 # BAU - no shocks
-mask = (run_summaries['shock_option'] == 'NO_SHOCKS') & (run_summaries['update_mode'] == 'NO_UPDATE') & (run_summaries['initial_permit_price'] == 0)
-if len(run_summaries[mask].index) != 1:
-    raise(Exception(f'Should only encounter 1 index, encountered:{run_summaries[mask].index}'))
+mask = (Case.case_summaries['shock_option'] == 'NO_SHOCKS') & (Case.case_summaries['update_mode'] == 'NO_UPDATE') & (Case.case_summaries['initial_permit_price'] == 0)
+if len(Case.case_summaries[mask].index) != 1:
+    raise(Exception(f'Should only encounter 1 index, encountered:{Case.case_summaries[mask].index}'))
 else:
-    r10 = run_summaries[mask].index[0]
+    r10 = Case.case_summaries[mask].index[0]
     
 # BAU - emissions intensity shock
-mask = (run_summaries['shock_option'] == 'EMISSIONS_INTENSITY_SHOCK') & (run_summaries['update_mode'] == 'NO_UPDATE') & (run_summaries['initial_permit_price'] == 0)
-if len(run_summaries[mask].index) != 1:
-    raise(Exception(f'Should only encounter 1 index, encountered:{run_summaries[mask].index}'))
+mask = (Case.case_summaries['shock_option'] == 'EMISSIONS_INTENSITY_SHOCK') & (Case.case_summaries['update_mode'] == 'NO_UPDATE') & (Case.case_summaries['initial_permit_price'] == 0)
+if len(Case.case_summaries[mask].index) != 1:
+    raise(Exception(f'Should only encounter 1 index, encountered:{Case.case_summaries[mask].index}'))
 else:
-    r11 = run_summaries[mask].index[0]
+    r11 = Case.case_summaries[mask].index[0]
 
 
 # Compute aggregate statistics for each case
 
-# In[ ]:
+# In[26]:
 
 
 # Container for aggregate statistics
@@ -609,39 +597,39 @@ table = []
 for r in [r0, r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11]:
     
     # Import weekly metrics
-    with open(os.path.join(results_dir, f'{r}_week_metrics.pickle'), 'rb') as f:
-        week_metrics = pickle.load(f)
+    with open(os.path.join(results_dir, f'{r}_calibration_interval_metrics.pickle'), 'rb') as f:
+        calibration_interval_metrics = pickle.load(f)
 
     # Import run summary for case
-    with open(os.path.join(results_dir, f'{r}_run_summary.pickle'), 'rb') as f:
-        run_summary = pickle.load(f)
+    with open(os.path.join(results_dir, f'{r}_case_summary.pickle'), 'rb') as f:
+        case_summary = pickle.load(f)
 
     # Dictionary to contain aggregate statistics for current case being investigated
     output = {}
 
     # Average weekly energy price
-    _, average_energy_price = get_case_data(r, 'average_energy_price')
+    _, average_energy_price = Case.get_case_data(r, 'average_energy_price')
     output['average_energy_price'] = f'{np.mean(average_energy_price):.2f} ({np.std(average_energy_price):.2f})'
 
     # Emissions (total)
-    _, total_emissions_tCO2 = get_case_data(r, 'total_emissions_tCO2')
+    _, total_emissions_tCO2 = Case.get_case_data(r, 'total_emissions_tCO2')
     output['total_emissions_tCO2'] = f'{np.sum(total_emissions_tCO2)/1e6:.2f}'
 
     # Baseline (weekly average)
-    _, baseline = get_case_data(r, 'baseline')
+    _, baseline = Case.get_case_data(r, 'baseline')
     output['baseline'] = f'{np.mean(baseline):.3f} ({np.std(baseline):.3f})'
 
     # Difference between scheme revenue and target
     try:
-        if run_summary[r]['update_mode'] == 'MPC_UPDATE':
+        if case_summary['update_mode'] == 'MPC_UPDATE':
             # Total model horizon
-            model_horizon = run_summary[r]['model_horizon']
+            model_horizon = case_summary['model_horizon']
 
             # Length of MPC forecast interval
-            forecast_interval_mpc = run_summary[r]['forecast_interval_mpc']
+            forecast_interval_mpc = case_summary['forecast_interval_mpc']
 
             # Target scheme revenue used in model
-            target_scheme_revenue_dict = run_summary[r]['target_scheme_revenue']
+            target_scheme_revenue_dict = case_summary['target_scheme_revenue']
 
             # Flatten to dict with single key-value pairs
             target_scheme_revenue = {**{i: j[1] for i, j in target_scheme_revenue_dict.items()},
@@ -649,12 +637,12 @@ for r in [r0, r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11]:
                                         for i in range(1, forecast_interval_mpc+1)}
                                     }
 
-        elif run_summary[r]['update_mode'] == 'REVENUE_REBALANCE_UPDATE':
+        elif case_summary['update_mode'] == 'REVENUE_REBALANCE_UPDATE':
             # Only a single forecast for rebalancing update
-            target_scheme_revenue = {i: j[1] for i, j in run_summary[r]['target_scheme_revenue'].items()}
+            target_scheme_revenue = {i: j[1] for i, j in case_summary['target_scheme_revenue'].items()}
 
         # Compute difference between accrued scheme revenue and target for each week
-        revenue_difference = pd.Series(target_scheme_revenue).subtract(pd.Series(week_metrics['rolling_scheme_revenue_interval_end']))
+        revenue_difference = pd.Series(target_scheme_revenue).subtract(pd.Series(calibration_interval_metrics['rolling_scheme_revenue_interval_end']))
 
         # Add to dictionary
         output['revenue_difference'] = f'{revenue_difference.mean()/1e6:.2f} ({revenue_difference.div(1e6).std():.2f})'
@@ -663,10 +651,10 @@ for r in [r0, r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11]:
         output['revenue_difference'] = '-'
 
     # Type of shock
-    output['shock_option'] = run_summary[r]['shock_option']
+    output['shock_option'] = case_summary['shock_option']
     
     # Model description
-    output['description'] = run_summary[r]['description']
+    output['description'] = case_summary['description']
     
     # Model run ID
     output['run_id'] = r
@@ -677,7 +665,7 @@ for r in [r0, r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11]:
 
 # Create tables to be used in manuscript
 
-# In[ ]:
+# In[34]:
 
 
 # Construct table containing aggregated statistics
@@ -685,16 +673,16 @@ df_table = pd.DataFrame(table)
 
 # Map case description to tuple which will define new index
 description_map = {'carbon tax - no shocks': ('Carbon tax', 'No shock'),
-                   'Revenue rebalance update - revenue neutral - no shocks - imperfect forecast': ('Revenue neutral', 'RR'),
-                   'MPC update - revenue neutral - no shocks - imperfect forecast': ('Revenue neutral', 'MPC'),
-                   'Revenue rebalance update - positive revenue target - no shocks - imperfect forecast': ('Revenue target', 'RR'),
-                   'MPC update - positive revenue target - no shocks - imperfect forecast': ('Revenue target', 'MPC'),
+                   'revenue rebalance update - revenue neutral target - no shocks - renewables ineligible': ('Revenue neutral', 'RR'),
+                   'mpc update - revenue neutral target - no shocks - renewables ineligible': ('Revenue neutral', 'MPC'),
+                   'revenue rebalance update - revenue ramp up target - no shocks - renewables ineligible': ('Revenue target', 'RR'),
+                   'mpc update - revenue ramp up target - no shocks - renewables ineligible': ('Revenue target', 'MPC'),
                    'business as usual - no shocks': ('BAU', 'No shock'),
                    'carbon tax - emissions intensity shock': ('Carbon tax', 'shock'),
-                   'Revenue rebalance update - revenue neutral - anticipated emissions intensity shock - imperfect forecast': ('Anticipated', 'RR'),
-                   'MPC update - revenue neutral - anticipated emissions intensity shock - imperfect forecast': ('Anticipated', 'MPC'),
-                   'Revenue rebalance update - revenue neutral - unanticipated emissions intensity shock - imperfect forecast': ('Unanticipated', 'RR'),
-                   'MPC update - revenue neutral - unanticipated emissions intensity shock - imperfect forecast': ('Unanticipated', 'MPC'),
+                   'revenue rebalance update - revenue neutral target - emissions intensity shock - renewables ineligible': ('Anticipated', 'RR'),
+                   'mpc update - revenue neutral target - emissions intensity shock - renewables ineligible': ('Anticipated', 'MPC'),
+                   'revenue rebalance update - revenue neutral target - emissions intensity shock unanticipated - renewables ineligible': ('Unanticipated', 'RR'),
+                   'mpc update - revenue neutral target - emissions intensity shock unanticipated - renewables ineligible': ('Unanticipated', 'MPC'),
                    'business as usual - emissions intensity shock': ('BAU', 'shock'),
                   }
 
@@ -706,11 +694,29 @@ mask = ['average_energy_price', 'total_emissions_tCO2', 'baseline', 'revenue_dif
 cols = [('BAU', 'No shock'), ('Carbon tax', 'No shock'), ('Revenue neutral', 'RR'), ('Revenue neutral', 'MPC'), ('Revenue target', 'RR'), ('Revenue target', 'MPC')]
 new_index = {'average_energy_price': 'Average price ($/MWh)', 'baseline': 'Baseline (tCO2/MWh)', 'revenue_difference': 'Revenue - Target (million $)', 'total_emissions_tCO2': 'Emissions (MtCO2)'}
 df1 = df_table.set_index(['new_index_1', 'new_index_2']).T.reindex(mask).loc[:, cols].rename(index=new_index)
-df1.to_csv('table_1.csv')
+# df1.to_csv('table_1.csv')
 
 # Emissions intensity shock results
 cols = [('BAU', 'shock'), ('Carbon tax', 'shock'), ('Anticipated', 'RR'), ('Anticipated', 'MPC'), ('Unanticipated', 'RR'), ('Unanticipated', 'MPC')]
 new_index = {'average_energy_price': 'Average price ($/MWh)', 'baseline': 'Baseline (tCO2/MWh)', 'revenue_difference': 'Revenue - Target (million $)', 'total_emissions_tCO2': 'Emissions (MtCO2)'}
 df2 = df_table.set_index(['new_index_1', 'new_index_2']).T.reindex(mask).loc[:, cols].rename(index=new_index)
-df2.to_csv('table_2.csv')
+# df2.to_csv('table_2.csv')
+
+
+# In[35]:
+
+
+df1
+
+
+# In[ ]:
+
+
+import ..2_updating
+
+
+# In[36]:
+
+
+df2
 
