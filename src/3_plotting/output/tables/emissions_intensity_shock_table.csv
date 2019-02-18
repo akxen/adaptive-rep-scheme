@@ -1,0 +1,6 @@
+new_index_1,BAU,Carbon tax,Anticipated,Anticipated,Unanticipated,Unanticipated
+new_index_2,shock,shock,RR,MPC,RR,MPC
+Average price ($/MWh),29.95 (4.01),64.59 (3.51),27.30 (2.39),27.29 (2.52),27.30 (2.50),27.31 (2.28)
+Emissions (MtCO2),162.68,157.68,157.68,157.68,157.68,157.68
+Baseline (tCO2/MWh),0.000 (0.000),0.000 (0.000),0.932 (0.040),0.932 (0.034),0.932 (0.046),0.932 (0.045)
+Revenue - Target (million $),0.00 (0.00),3296.86 (1785.47),0.00 (0.09),1.54 (4.20),-0.29 (2.16),-4.49 (8.12)
