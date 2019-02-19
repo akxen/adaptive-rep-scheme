@@ -332,7 +332,7 @@ x_r9, y_r9 = Case.get_case_data(case_id=r9, series_name='rolling_scheme_revenue_
 # 
 # Goal is to observe how the emissions intensity baseline and scheme revenue behave under these different scenarios.
 
-# In[8]:
+# In[5]:
 
 
 plt.clf()
@@ -586,10 +586,328 @@ eps1.close()
 plt.show()
 
 
+# ## Plots used in presentations
+# #### Revenue neutral case
+
+# In[44]:
+
+
+plt.clf()
+fig, (ax1, ax2) = plt.subplots(nrows=2, ncols=1)
+
+# Revenue rebalancing
+# -------------------
+# Baseline
+l1, = ax1.plot(x_b1, y_b1, **revenue_rebalancing_format)
+
+# Scheme revenue
+ax2.plot(x_r1, y_r1, **revenue_rebalancing_format)
+
+
+# MPC update
+# ----------
+# Baseline
+l2, = ax1.plot(x_b2, y_b2, **mpc_format)
+
+# Scheme revenue
+ax2.plot(x_r2, y_r2, **mpc_format)
+
+# Emissions intensity
+l3, = ax1.plot(x_e0, y_e0, **emissions_intensity_format)
+
+# Revenue target
+l4, = ax2.plot([1, 52], [0, 0], **revenue_target_format)
+
+# Legend
+legend = ax1.legend([l1, l2, l3, l4],
+                    ['SRR-U', 'MPC-U', 'Emissions intensity ($\mathdefault{\Psi_{s}}$)', 'Revenue target (\$)'],
+                    ncol=2, fontsize=7, frameon=False, bbox_to_anchor=[0.47, 0.23], loc='center')
+
+
+# Format ticks
+# ------------
+ax1.tick_params(labelbottom=False)
+
+# Use scientific notation for scheme revenue
+ax2.ticklabel_format(style='sci', axis='y', scilimits=(10, 6))
+
+# Scientific notation format
+ax2.yaxis.major.formatter._useMathText = True
+
+# Turn on minor ticks
+ax1.minorticks_on()
+ax2.minorticks_on()
+
+# Change size of tick labels
+ax1.tick_params(labelsize=8)
+ax2.tick_params(labelsize=8)
+
+# Change size of text used in scheme revenue scientific notation exponent
+ax2.yaxis.get_offset_text().set_size(8)
+
+# Format axes
+# -----------
+ax1.set_ylabel('Baseline (tCO$_{2}$/MWh)', fontsize=9.5)
+ax2.set_ylabel('Scheme revenue (\$)', fontsize=9.5)
+ax2.set_xlabel('Week', fontsize=9.5)
+
+# Set figure size
+# ---------------
+width = 12
+height = 7.3
+cm_to_in = 0.393701
+fig.set_size_inches(width*cm_to_in, height*cm_to_in)
+
+# Adjust subplot positions
+fig.subplots_adjust(left=0.11, bottom=0.135, right=0.99, top=0.97, wspace=0.2, hspace=0.25)
+
+# Save figure
+fig.savefig(os.path.join(output_dir, 'figures', 'presention_revenue_neutral_target.pdf'), transparent=True)
+
+plt.show()
+
+
+# #### Positive revenue target case
+
+# In[45]:
+
+
+plt.clf()
+fig, (ax1, ax2) = plt.subplots(nrows=2, ncols=1)
+
+# Revenue rebalancing
+# -------------------
+# Baseline
+l1, = ax1.plot(x_b3, y_b3, **revenue_rebalancing_format)
+
+# Scheme revenue
+ax2.plot(x_r3, y_r3, **revenue_rebalancing_format)
+
+# MPC update
+# ----------
+# Baseline
+l2, ax1.plot(x_b4, y_b4, **mpc_format)
+
+# Scheme revenue
+ax2.plot(x_r4, y_r4, **mpc_format)
+
+# Emissions intensity
+l3, = ax1.plot(x_e0, y_e0, **emissions_intensity_format)
+
+# Revenue ramp
+l4, = ax4.plot([1, 9, 19, 52], [0, 0, 30e6, 30e6], **revenue_target_format)
+
+# Legend
+legend = ax2.legend([l1, l2, l3, l4], 
+                    ['SRR-U', 'MPC-U', 'Emissions intensity ($\mathdefault{\Psi_{s}}$)', 'Revenue target (\$)'],
+                    ncol=2, fontsize=7, frameon=False)
+
+
+# Format ticks
+# ------------
+ax1.tick_params(labelbottom=False)
+
+# Use scientific notation for scheme revenue
+ax2.ticklabel_format(style='sci', axis='y', scilimits=(10, 6))
+
+# Scientific notation format
+ax2.yaxis.major.formatter._useMathText = True
+
+# Turn on minor ticks
+ax1.minorticks_on()
+ax2.minorticks_on()
+
+# Change size of tick labels
+ax1.tick_params(labelsize=8)
+ax2.tick_params(labelsize=8)
+
+# Change size of text used in scheme revenue scientific notation exponent
+ax2.yaxis.get_offset_text().set_size(8)
+
+# Format axes
+# -----------
+ax1.set_ylabel('Baseline (tCO$_{2}$/MWh)', fontsize=9.5)
+ax2.set_ylabel('Scheme revenue (\$)', fontsize=9.5)
+ax2.set_xlabel('Week', fontsize=9.5)
+
+# Set figure size
+# ---------------
+width = 12
+height = 7.3
+cm_to_in = 0.393701
+fig.set_size_inches(width*cm_to_in, height*cm_to_in)
+
+# Adjust subplot positions
+fig.subplots_adjust(left=0.11, bottom=0.135, right=0.99, top=0.97, wspace=0.2, hspace=0.25)
+
+# Save figure
+fig.savefig(os.path.join(output_dir, 'figures', 'presention_positive_revenue_target.pdf'), transparent=True)
+
+plt.show()
+
+
+# #### Anticipated emissions intensity shock
+
+# In[46]:
+
+
+plt.clf()
+fig, (ax1, ax2) = plt.subplots(nrows=2, ncols=1)
+
+# Revenue rebalancing
+# -------------------
+# Baseline
+ax1.plot(x_b6, y_b6, **revenue_rebalancing_format)
+
+# Scheme revenue
+ax2.plot(x_r6, y_r6, **revenue_rebalancing_format)
+
+# MPC update
+# ----------
+# Baseline
+ax1.plot(x_b7, y_b7, **mpc_format)
+
+# Scheme revenue
+ax2.plot(x_r7, y_r7, **mpc_format)
+
+# Emissions intensity
+ax1.plot(x_e5, y_e5, **emissions_intensity_format)
+
+# Revenue target
+l4, = ax2.plot([1, 52], [0, 0], **revenue_target_format)
+
+# Legend
+legend = ax2.legend([l1, l2, l3, l4],
+                    ['SRR-U', 'MPC-U', 'Emissions intensity ($\mathdefault{\Psi_{s}}$)', 'Revenue target (\$)'],
+                    ncol=2, fontsize=7, frameon=False)
+
+
+# Format ticks
+# ------------
+ax1.tick_params(labelbottom=False)
+
+# Use scientific notation for scheme revenue
+ax2.ticklabel_format(style='sci', axis='y', scilimits=(10, 6))
+
+# Scientific notation format
+ax2.yaxis.major.formatter._useMathText = True
+
+# Turn on minor ticks
+ax1.minorticks_on()
+ax2.minorticks_on()
+
+# Change size of tick labels
+ax1.tick_params(labelsize=8)
+ax2.tick_params(labelsize=8)
+
+# Change size of text used in scheme revenue scientific notation exponent
+ax2.yaxis.get_offset_text().set_size(8)
+
+# Format axes
+# -----------
+ax1.set_ylabel('Baseline (tCO$_{2}$/MWh)', fontsize=9.5)
+ax2.set_ylabel('Scheme revenue (\$)', fontsize=9.5)
+ax2.set_xlabel('Week', fontsize=9.5)
+
+# Set figure size
+# ---------------
+width = 12
+height = 7.3
+cm_to_in = 0.393701
+fig.set_size_inches(width*cm_to_in, height*cm_to_in)
+
+# Adjust subplot positions
+fig.subplots_adjust(left=0.11, bottom=0.135, right=0.99, top=0.97, wspace=0.2, hspace=0.25)
+
+# Save figure
+fig.savefig(os.path.join(output_dir, 'figures', 'presention_anticipated_shock.pdf'), transparent=True)
+
+plt.show()
+
+
+# #### Unanticipated emissions intensity shock
+
+# In[47]:
+
+
+plt.clf()
+fig, (ax1, ax2) = plt.subplots(nrows=2, ncols=1)
+
+# Revenue rebalancing
+# -------------------
+# Baseline
+ax1.plot(x_b8, y_b8, **revenue_rebalancing_format)
+
+# Scheme revenue
+ax2.plot(x_r8, y_r8, **revenue_rebalancing_format)
+
+# MPC update
+# ----------
+# Baseline
+ax1.plot(x_b9, y_b9, **mpc_format)
+
+# Scheme revenue
+ax2.plot(x_r9, y_r9, **mpc_format)
+
+# Emissions intensity
+ax1.plot(x_e5, y_e5, **emissions_intensity_format)
+
+# Revenue target
+l4, = ax2.plot([1, 52], [0, 0], **revenue_target_format)
+
+# Legend
+legend = ax2.legend([l1, l2, l3, l4],
+                    ['SRR-U', 'MPC-U', 'Emissions intensity ($\mathdefault{\Psi_{s}}$)', 'Revenue target (\$)'],
+                    ncol=2, fontsize=7, frameon=False)
+
+
+# Format ticks
+# ------------
+ax1.tick_params(labelbottom=False)
+
+# Use scientific notation for scheme revenue
+ax2.ticklabel_format(style='sci', axis='y', scilimits=(10, 6))
+
+# Scientific notation format
+ax2.yaxis.major.formatter._useMathText = True
+
+# Turn on minor ticks
+ax1.minorticks_on()
+ax2.minorticks_on()
+
+# Change size of tick labels
+ax1.tick_params(labelsize=8)
+ax2.tick_params(labelsize=8)
+
+# Change size of text used in scheme revenue scientific notation exponent
+ax2.yaxis.get_offset_text().set_size(8)
+
+# Format axes
+# -----------
+ax1.set_ylabel('Baseline (tCO$_{2}$/MWh)', fontsize=9.5)
+ax2.set_ylabel('Scheme revenue (\$)', fontsize=9.5)
+ax2.set_xlabel('Week', fontsize=10)
+
+# Set figure size
+# ---------------
+width = 12
+height = 7.3
+cm_to_in = 0.393701
+fig.set_size_inches(width*cm_to_in, height*cm_to_in)
+
+# Adjust subplot positions
+fig.subplots_adjust(left=0.1, bottom=0.135, right=0.99, top=0.97, wspace=0.2, hspace=0.25)
+
+# Save figure
+fig.savefig(os.path.join(output_dir, 'figures', 'presention_unanticipated_shock.pdf'), transparent=True)
+
+plt.show()
+
+
 # ## Create table
 # Create tables comparing aggregate updating scheme statistics.
 
-# In[ ]:
+# In[10]:
 
 
 # Include business-as-usual case when making comparison
@@ -611,7 +929,7 @@ else:
 
 # Compute aggregate statistics for each case
 
-# In[ ]:
+# In[11]:
 
 
 # Container for aggregate statistics
@@ -689,7 +1007,7 @@ for r in [r0, r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11]:
 
 # Create tables to be used in manuscript
 
-# In[ ]:
+# In[12]:
 
 
 # Construct table containing aggregated statistics
@@ -731,7 +1049,7 @@ df_emissions_intensity_shock_table.to_csv(os.path.join(output_dir, 'tables', 'em
 
 # #### Revenue target results table
 
-# In[ ]:
+# In[13]:
 
 
 df_revenue_target_table
@@ -739,7 +1057,7 @@ df_revenue_target_table
 
 # #### Emissions intensity shock results table
 
-# In[ ]:
+# In[14]:
 
 
 df_emissions_intensity_shock_table
