@@ -18,7 +18,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from matplotlib.ticker import MultipleLocator, FormatStrFormatter, AutoMinorLocator
-
+from PIL import Image
 mpl.rc('font', family='Times New Roman')
 
 
@@ -332,7 +332,7 @@ x_r9, y_r9 = Case.get_case_data(case_id=r9, series_name='rolling_scheme_revenue_
 # 
 # Goal is to observe how the emissions intensity baseline and scheme revenue behave under these different scenarios.
 
-# In[5]:
+# In[8]:
 
 
 plt.clf()
@@ -570,8 +570,18 @@ fig.set_size_inches(width*cm_to_in, height*cm_to_in)
 # Adjust subplot positions
 fig.subplots_adjust(left=0.07, bottom=0.135, right=0.99, top=0.98, wspace=0.2, hspace=0.2)
 
-# Save figure
-fig.savefig(os.path.join(output_dir, 'figures', 'case_results.png'), dpi=800)
+# Save figure as png
+fig.savefig(os.path.join(output_dir, 'figures', 'case_results.eps'))
+
+# Save figure as eps
+fig.savefig(os.path.join(output_dir, 'figures', 'case_results.eps'))
+
+# Import eps figure
+eps1 = Image.open(os.path.join(output_dir, 'figures', 'case_results.eps'))
+
+# Save as TIFF
+eps1.save(os.path.join(output_dir, 'figures', 'case_results.tiff'), compression=None, dpi=(800, 800))
+eps1.close()
 
 plt.show()
 
@@ -579,7 +589,7 @@ plt.show()
 # ## Create table
 # Create tables comparing aggregate updating scheme statistics.
 
-# In[6]:
+# In[ ]:
 
 
 # Include business-as-usual case when making comparison
@@ -601,7 +611,7 @@ else:
 
 # Compute aggregate statistics for each case
 
-# In[7]:
+# In[ ]:
 
 
 # Container for aggregate statistics
@@ -679,7 +689,7 @@ for r in [r0, r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11]:
 
 # Create tables to be used in manuscript
 
-# In[8]:
+# In[ ]:
 
 
 # Construct table containing aggregated statistics
@@ -721,7 +731,7 @@ df_emissions_intensity_shock_table.to_csv(os.path.join(output_dir, 'tables', 'em
 
 # #### Revenue target results table
 
-# In[9]:
+# In[ ]:
 
 
 df_revenue_target_table
@@ -729,7 +739,7 @@ df_revenue_target_table
 
 # #### Emissions intensity shock results table
 
-# In[10]:
+# In[ ]:
 
 
 df_emissions_intensity_shock_table

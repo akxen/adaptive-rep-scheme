@@ -1,5 +1,7 @@
 *.pdf
 *.png
+*.tiff
+*.eps
 *.pickle
 *.txt
 *.lp
