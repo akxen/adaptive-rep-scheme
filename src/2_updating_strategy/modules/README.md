@@ -1,23 +1,2 @@
 # Analysis workflow
-Summary of the analysis procedure, and the different classes that make-up the model.
-
-### ModelData
-Import and process model data used in analysis
-
-### DCOPF
-Direct-current optimal power flow model. Inherits from ModelData
-
-### MPC
-Model Predicitve Control optimisation program used to update emissions intensity baseline.
-
-### Forecast
-Generate forecasts used for REP updates based on benchmark case results
-
-### Cases
-Defines the different cases to investigate
-
-
-
-Initialise model parameters
-
-
+Modules are used to separate different model components. ModelData contains classes used to import raw data describing network and generator information, and also organise these data into a format used in Direct Current Optimal Power Flow (DCOPF) simulations. The DCOPF module contains a class used to construct the underlying optimal power flow model, while the Baseline module contains classes describing the logic used to update the emissions intensity baseline. The Simulator module combines these different elements, running the agent-based model for different scenarios which are loaded from the Cases module.
