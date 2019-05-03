@@ -233,7 +233,7 @@ df_o = (pd.concat([df_node_demand, df_intermittent, df_hydro])
         .reorder_levels(['level', 'NODE_ID']))
 
 
-# ## K-nearest neighbours
+# ## K-means clustering
 # Construct clustering algorithm to transform the set of trading intervals into a reduced set of representative operating scenarios.
 
 # In[6]:
