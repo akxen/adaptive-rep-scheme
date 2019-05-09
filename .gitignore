@@ -8,4 +8,5 @@
 *.mps
 *.sublime-workspace
 
+.idea/*
 man/*
