@@ -589,11 +589,24 @@ plt.show()
 # ## Plots used in presentations
 # #### Revenue neutral case
 
-# In[44]:
+# In[28]:
 
 
 plt.clf()
 fig, (ax1, ax2) = plt.subplots(nrows=2, ncols=1)
+
+# Revenue re-balancing line colour and style
+revenue_rebalancing_format = {'color': '#9721ce', 'linewidth': 1.4, 'alpha': 0.8}
+#ce0000
+# MPC line colour and style
+mpc_format = {'color': '#2084e8', 'linewidth': 1.4, 'alpha': 0.8}
+
+# Emissions intensity line
+emissions_intensity_format = {'color': '#e85c20', 'linewidth': 1.4, 'alpha': 0.8, 'linestyle': '--'}
+
+# Revenue target line
+revenue_target_format = {'color': '#a0a0a0', 'linewidth': 1.4, 'linestyle': '--', 'alpha': 0.7}
+
 
 # Revenue rebalancing
 # -------------------
@@ -621,7 +634,7 @@ l4, = ax2.plot([1, 52], [0, 0], **revenue_target_format)
 # Legend
 legend = ax1.legend([l1, l2, l3, l4],
                     ['SRR-U', 'MPC-U', 'Emissions intensity ($\mathdefault{\Psi_{s}}$)', 'Revenue target (\$)'],
-                    ncol=2, fontsize=7, frameon=False, bbox_to_anchor=[0.47, 0.23], loc='center')
+                    ncol=2, fontsize=13, frameon=False, bbox_to_anchor=[0.47, 0.23], loc='center')
 
 
 # Format ticks
@@ -639,22 +652,22 @@ ax1.minorticks_on()
 ax2.minorticks_on()
 
 # Change size of tick labels
-ax1.tick_params(labelsize=8)
-ax2.tick_params(labelsize=8)
+ax1.tick_params(labelsize=14)
+ax2.tick_params(labelsize=14)
 
 # Change size of text used in scheme revenue scientific notation exponent
-ax2.yaxis.get_offset_text().set_size(8)
+ax2.yaxis.get_offset_text().set_size(14)
 
 # Format axes
 # -----------
-ax1.set_ylabel('Baseline (tCO$_{2}$/MWh)', fontsize=9.5)
-ax2.set_ylabel('Scheme revenue (\$)', fontsize=9.5)
-ax2.set_xlabel('Week', fontsize=9.5)
+ax1.set_ylabel('Baseline (tCO$_{2}$/MWh)', fontsize=15)
+ax2.set_ylabel('Scheme revenue (\$)', fontsize=15)
+ax2.set_xlabel('Week', fontsize=15)
 
 # Set figure size
 # ---------------
-width = 12
-height = 7.3
+width = 32
+height = 12
 cm_to_in = 0.393701
 fig.set_size_inches(width*cm_to_in, height*cm_to_in)
 
@@ -662,14 +675,14 @@ fig.set_size_inches(width*cm_to_in, height*cm_to_in)
 fig.subplots_adjust(left=0.11, bottom=0.135, right=0.99, top=0.97, wspace=0.2, hspace=0.25)
 
 # Save figure
-fig.savefig(os.path.join(output_dir, 'figures', 'presention_revenue_neutral_target.pdf'), transparent=True)
+fig.savefig(os.path.join(output_dir, 'figures', 'ppt-plots', 'presention_revenue_neutral_target.png'), dpi=1200, transparent=True)
 
 plt.show()
 
 
 # #### Positive revenue target case
 
-# In[45]:
+# In[31]:
 
 
 plt.clf()
@@ -700,7 +713,7 @@ l4, = ax4.plot([1, 9, 19, 52], [0, 0, 30e6, 30e6], **revenue_target_format)
 # Legend
 legend = ax2.legend([l1, l2, l3, l4], 
                     ['SRR-U', 'MPC-U', 'Emissions intensity ($\mathdefault{\Psi_{s}}$)', 'Revenue target (\$)'],
-                    ncol=2, fontsize=7, frameon=False)
+                    ncol=2, fontsize=13, frameon=False)
 
 
 # Format ticks
@@ -718,22 +731,22 @@ ax1.minorticks_on()
 ax2.minorticks_on()
 
 # Change size of tick labels
-ax1.tick_params(labelsize=8)
-ax2.tick_params(labelsize=8)
+ax1.tick_params(labelsize=14)
+ax2.tick_params(labelsize=14)
 
 # Change size of text used in scheme revenue scientific notation exponent
-ax2.yaxis.get_offset_text().set_size(8)
+ax2.yaxis.get_offset_text().set_size(14)
 
 # Format axes
 # -----------
-ax1.set_ylabel('Baseline (tCO$_{2}$/MWh)', fontsize=9.5)
-ax2.set_ylabel('Scheme revenue (\$)', fontsize=9.5)
-ax2.set_xlabel('Week', fontsize=9.5)
+ax1.set_ylabel('Baseline (tCO$_{2}$/MWh)', fontsize=15)
+ax2.set_ylabel('Scheme revenue (\$)', fontsize=15)
+ax2.set_xlabel('Week', fontsize=15)
 
 # Set figure size
 # ---------------
-width = 12
-height = 7.3
+width = 32
+height = 12
 cm_to_in = 0.393701
 fig.set_size_inches(width*cm_to_in, height*cm_to_in)
 
@@ -741,14 +754,14 @@ fig.set_size_inches(width*cm_to_in, height*cm_to_in)
 fig.subplots_adjust(left=0.11, bottom=0.135, right=0.99, top=0.97, wspace=0.2, hspace=0.25)
 
 # Save figure
-fig.savefig(os.path.join(output_dir, 'figures', 'presention_positive_revenue_target.pdf'), transparent=True)
+fig.savefig(os.path.join(output_dir, 'figures', 'ppt-plots', 'presention_positive_revenue_target.png'), transparent=True, dpi=1200)
 
 plt.show()
 
 
 # #### Anticipated emissions intensity shock
 
-# In[46]:
+# In[32]:
 
 
 plt.clf()
@@ -779,7 +792,7 @@ l4, = ax2.plot([1, 52], [0, 0], **revenue_target_format)
 # Legend
 legend = ax2.legend([l1, l2, l3, l4],
                     ['SRR-U', 'MPC-U', 'Emissions intensity ($\mathdefault{\Psi_{s}}$)', 'Revenue target (\$)'],
-                    ncol=2, fontsize=7, frameon=False)
+                    ncol=2, fontsize=13, frameon=False)
 
 
 # Format ticks
@@ -797,22 +810,22 @@ ax1.minorticks_on()
 ax2.minorticks_on()
 
 # Change size of tick labels
-ax1.tick_params(labelsize=8)
-ax2.tick_params(labelsize=8)
+ax1.tick_params(labelsize=14)
+ax2.tick_params(labelsize=14)
 
 # Change size of text used in scheme revenue scientific notation exponent
-ax2.yaxis.get_offset_text().set_size(8)
+ax2.yaxis.get_offset_text().set_size(14)
 
 # Format axes
 # -----------
-ax1.set_ylabel('Baseline (tCO$_{2}$/MWh)', fontsize=9.5)
-ax2.set_ylabel('Scheme revenue (\$)', fontsize=9.5)
-ax2.set_xlabel('Week', fontsize=9.5)
+ax1.set_ylabel('Baseline (tCO$_{2}$/MWh)', fontsize=15)
+ax2.set_ylabel('Scheme revenue (\$)', fontsize=15)
+ax2.set_xlabel('Week', fontsize=15)
 
 # Set figure size
 # ---------------
-width = 12
-height = 7.3
+width = 32
+height = 12
 cm_to_in = 0.393701
 fig.set_size_inches(width*cm_to_in, height*cm_to_in)
 
@@ -820,14 +833,14 @@ fig.set_size_inches(width*cm_to_in, height*cm_to_in)
 fig.subplots_adjust(left=0.11, bottom=0.135, right=0.99, top=0.97, wspace=0.2, hspace=0.25)
 
 # Save figure
-fig.savefig(os.path.join(output_dir, 'figures', 'presention_anticipated_shock.pdf'), transparent=True)
+fig.savefig(os.path.join(output_dir, 'figures', 'ppt-plots', 'presention_anticipated_shock.png'), transparent=True, dpi=1200)
 
 plt.show()
 
 
 # #### Unanticipated emissions intensity shock
 
-# In[47]:
+# In[33]:
 
 
 plt.clf()
@@ -858,7 +871,7 @@ l4, = ax2.plot([1, 52], [0, 0], **revenue_target_format)
 # Legend
 legend = ax2.legend([l1, l2, l3, l4],
                     ['SRR-U', 'MPC-U', 'Emissions intensity ($\mathdefault{\Psi_{s}}$)', 'Revenue target (\$)'],
-                    ncol=2, fontsize=7, frameon=False)
+                    ncol=2, fontsize=13, frameon=False)
 
 
 # Format ticks
@@ -876,22 +889,22 @@ ax1.minorticks_on()
 ax2.minorticks_on()
 
 # Change size of tick labels
-ax1.tick_params(labelsize=8)
-ax2.tick_params(labelsize=8)
+ax1.tick_params(labelsize=14)
+ax2.tick_params(labelsize=14)
 
 # Change size of text used in scheme revenue scientific notation exponent
-ax2.yaxis.get_offset_text().set_size(8)
+ax2.yaxis.get_offset_text().set_size(14)
 
 # Format axes
 # -----------
-ax1.set_ylabel('Baseline (tCO$_{2}$/MWh)', fontsize=9.5)
-ax2.set_ylabel('Scheme revenue (\$)', fontsize=9.5)
-ax2.set_xlabel('Week', fontsize=10)
+ax1.set_ylabel('Baseline (tCO$_{2}$/MWh)', fontsize=15)
+ax2.set_ylabel('Scheme revenue (\$)', fontsize=15)
+ax2.set_xlabel('Week', fontsize=15)
 
 # Set figure size
 # ---------------
-width = 12
-height = 7.3
+width = 32
+height = 12
 cm_to_in = 0.393701
 fig.set_size_inches(width*cm_to_in, height*cm_to_in)
 
@@ -899,7 +912,7 @@ fig.set_size_inches(width*cm_to_in, height*cm_to_in)
 fig.subplots_adjust(left=0.1, bottom=0.135, right=0.99, top=0.97, wspace=0.2, hspace=0.25)
 
 # Save figure
-fig.savefig(os.path.join(output_dir, 'figures', 'presention_unanticipated_shock.pdf'), transparent=True)
+fig.savefig(os.path.join(output_dir, 'figures', 'ppt-plots', 'presention_unanticipated_shock.png'), transparent=True, dpi=1200)
 
 plt.show()
 
