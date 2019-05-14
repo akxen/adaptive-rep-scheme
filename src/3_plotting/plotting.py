@@ -589,23 +589,23 @@ plt.show()
 # ## Plots used in presentations
 # #### Revenue neutral case
 
-# In[28]:
+# In[13]:
 
 
 plt.clf()
 fig, (ax1, ax2) = plt.subplots(nrows=2, ncols=1)
 
 # Revenue re-balancing line colour and style
-revenue_rebalancing_format = {'color': '#9721ce', 'linewidth': 1.4, 'alpha': 0.8}
-#ce0000
+revenue_rebalancing_format = {'color': '#9721ce', 'linewidth': 2, 'alpha': 0.8}
+
 # MPC line colour and style
-mpc_format = {'color': '#2084e8', 'linewidth': 1.4, 'alpha': 0.8}
+mpc_format = {'color': '#2084e8', 'linewidth': 2, 'alpha': 0.8}
 
 # Emissions intensity line
-emissions_intensity_format = {'color': '#e85c20', 'linewidth': 1.4, 'alpha': 0.8, 'linestyle': '--'}
+emissions_intensity_format = {'color': '#e85c20', 'linewidth': 2, 'alpha': 0.8, 'linestyle': '--'}
 
 # Revenue target line
-revenue_target_format = {'color': '#a0a0a0', 'linewidth': 1.4, 'linestyle': '--', 'alpha': 0.7}
+revenue_target_format = {'color': '#a0a0a0', 'linewidth': 2, 'linestyle': '--', 'alpha': 0.7}
 
 
 # Revenue rebalancing
@@ -633,8 +633,8 @@ l4, = ax2.plot([1, 52], [0, 0], **revenue_target_format)
 
 # Legend
 legend = ax1.legend([l1, l2, l3, l4],
-                    ['SRR-U', 'MPC-U', 'Emissions intensity ($\mathdefault{\Psi_{s}}$)', 'Revenue target (\$)'],
-                    ncol=2, fontsize=13, frameon=False, bbox_to_anchor=[0.47, 0.23], loc='center')
+                    ['Single interval rule', 'MPC rule', 'Emissions intensity ($\mathdefault{\Psi_{s}}$)', 'Revenue target (\$)'],
+                    ncol=2, fontsize=15, frameon=False, bbox_to_anchor=[0.47, 0.23], loc='center')
 
 
 # Format ticks
@@ -682,7 +682,7 @@ plt.show()
 
 # #### Positive revenue target case
 
-# In[31]:
+# In[12]:
 
 
 plt.clf()
@@ -712,8 +712,8 @@ l4, = ax4.plot([1, 9, 19, 52], [0, 0, 30e6, 30e6], **revenue_target_format)
 
 # Legend
 legend = ax2.legend([l1, l2, l3, l4], 
-                    ['SRR-U', 'MPC-U', 'Emissions intensity ($\mathdefault{\Psi_{s}}$)', 'Revenue target (\$)'],
-                    ncol=2, fontsize=13, frameon=False)
+                    ['Single interval rule', 'MPC rule', 'Emissions intensity ($\mathdefault{\Psi_{s}}$)', 'Revenue target (\$)'],
+                    ncol=2, fontsize=15, frameon=False)
 
 
 # Format ticks
@@ -761,7 +761,7 @@ plt.show()
 
 # #### Anticipated emissions intensity shock
 
-# In[32]:
+# In[11]:
 
 
 plt.clf()
@@ -791,8 +791,8 @@ l4, = ax2.plot([1, 52], [0, 0], **revenue_target_format)
 
 # Legend
 legend = ax2.legend([l1, l2, l3, l4],
-                    ['SRR-U', 'MPC-U', 'Emissions intensity ($\mathdefault{\Psi_{s}}$)', 'Revenue target (\$)'],
-                    ncol=2, fontsize=13, frameon=False)
+                    ['Single interval rule', 'MPC rule', 'Emissions intensity ($\mathdefault{\Psi_{s}}$)', 'Revenue target (\$)'],
+                    ncol=2, fontsize=15, frameon=False)
 
 
 # Format ticks
@@ -840,7 +840,7 @@ plt.show()
 
 # #### Unanticipated emissions intensity shock
 
-# In[33]:
+# In[10]:
 
 
 plt.clf()
@@ -870,8 +870,8 @@ l4, = ax2.plot([1, 52], [0, 0], **revenue_target_format)
 
 # Legend
 legend = ax2.legend([l1, l2, l3, l4],
-                    ['SRR-U', 'MPC-U', 'Emissions intensity ($\mathdefault{\Psi_{s}}$)', 'Revenue target (\$)'],
-                    ncol=2, fontsize=13, frameon=False)
+                    ['Single interval rule', 'MPC rule', 'Emissions intensity ($\mathdefault{\Psi_{s}}$)', 'Revenue target (\$)'],
+                    ncol=2, fontsize=15, frameon=False)
 
 
 # Format ticks
@@ -920,7 +920,7 @@ plt.show()
 # ## Create table
 # Create tables comparing aggregate updating scheme statistics.
 
-# In[10]:
+# In[ ]:
 
 
 # Include business-as-usual case when making comparison
@@ -942,7 +942,7 @@ else:
 
 # Compute aggregate statistics for each case
 
-# In[11]:
+# In[ ]:
 
 
 # Container for aggregate statistics
@@ -1020,7 +1020,7 @@ for r in [r0, r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11]:
 
 # Create tables to be used in manuscript
 
-# In[12]:
+# In[ ]:
 
 
 # Construct table containing aggregated statistics
@@ -1062,7 +1062,7 @@ df_emissions_intensity_shock_table.to_csv(os.path.join(output_dir, 'tables', 'em
 
 # #### Revenue target results table
 
-# In[13]:
+# In[ ]:
 
 
 df_revenue_target_table
@@ -1070,7 +1070,7 @@ df_revenue_target_table
 
 # #### Emissions intensity shock results table
 
-# In[14]:
+# In[ ]:
 
 
 df_emissions_intensity_shock_table
