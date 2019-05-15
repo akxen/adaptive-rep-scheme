@@ -1,6 +1,6 @@
 new_index_1,BAU,Carbon tax,Revenue neutral,Revenue neutral,Revenue target,Revenue target
 new_index_2,No shock,No shock,RR,MPC,RR,MPC
-Average price ($/MWh),29.95 (4.01),68.25 (2.16),27.23 (2.22),27.23 (2.21),27.41 (2.23),27.41 (2.23)
+Average price ($/MWh),29.95 (4.01),68.25 (2.16),27.23 (2.22),27.23 (2.22),27.41 (2.22),27.41 (2.24)
 Emissions (MtCO2),177.26,173.19,173.19,173.19,173.19,173.19
 Baseline (tCO2/MWh),0.000 (0.000),0.000 (0.000),1.026 (0.005),1.026 (0.003),1.021 (0.010),1.021 (0.007)
-Revenue - Target (million $),0.00 (0.00),-,-0.01 (0.09),-0.18 (0.84),-0.01 (0.09),-0.14 (1.19)
+Revenue - Target (million $),0.00 (0.00),-,-0.01 (0.08),-0.29 (0.76),-0.01 (0.08),-0.24 (1.31)
