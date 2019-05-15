@@ -3,7 +3,6 @@
 *.tiff
 *.eps
 *.pickle
-*.txt
 *.lp
 *.mps
 *.sublime-workspace

@@ -573,6 +573,9 @@ fig.subplots_adjust(left=0.07, bottom=0.135, right=0.99, top=0.98, wspace=0.2, h
 # Save figure as png
 fig.savefig(os.path.join(output_dir, 'figures', 'case_results.eps'))
 
+# Save figure as pdf
+fig.savefig(os.path.join(output_dir, 'figures', 'case_results.pdf'))
+
 # Save figure as eps
 fig.savefig(os.path.join(output_dir, 'figures', 'case_results.eps'))
 

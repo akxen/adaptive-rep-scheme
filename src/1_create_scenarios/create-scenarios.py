@@ -12,6 +12,8 @@
 # 
 # - 52 weeks/year $\times$ 10 operating scenarios/week = 520 operating scenarios/year.
 # 
+# **Note:** If seeking to construct these scenarios on your local machine, you must download the relevant MMSDM archives from NEMWEB [http://www.nemweb.com.au/#mms-data-model](http://www.nemweb.com.au/#mms-data-model). To replicate this analysis download all monthly archives for 2017 and place these zipped files in a single directory. Update the parameter `archive_dir` below to point to this directory.
+# 
 # ## Import packages
 
 # In[1]:
@@ -37,14 +39,17 @@ idx = pd.IndexSlice
 
 # ## Paths to files
 
-# In[2]:
+# In[8]:
 
 
 # Contains network information and generator parameters
-data_dir = os.path.join(os.path.curdir, os.path.pardir, os.path.pardir, 'data')
+data_dir = os.path.join(os.path.curdir, os.path.pardir, os.path.pardir, 'data', 'egrimod-nem-dataset-v1.3', 'akxen-egrimod-nem-dataset-4806603')
 
 # MMSDM historic demand and dispatch signals
-archive_dir = r'D:\nemweb\Reports\Data_Archive\MMSDM\zipped'
+# ------------------------------------------
+# Note: This path must be updated for your local machine. It should point to the directory containing
+# downloaded monthly MMSDM data archive files.
+archive_dir = r'C:\Users\eee\Desktop\nemweb\Reports\Data_Archive\MMSDM\zipped'
 
 # Location for output files
 output_dir = os.path.join(os.path.curdir, 'output')
@@ -52,15 +57,15 @@ output_dir = os.path.join(os.path.curdir, 'output')
 
 # ## Import generator and network information
 
-# In[3]:
+# In[10]:
 
 
 # Generator information
-df_g = pd.read_csv(os.path.join(data_dir, 'generators.csv'), 
+df_g = pd.read_csv(os.path.join(data_dir, 'generators', 'generators.csv'), 
                    index_col='DUID', dtype={'NODE': int})
 
 # Network node information
-df_n = pd.read_csv(os.path.join(data_dir, 'network_nodes.csv'), index_col='NODE_ID')
+df_n = pd.read_csv(os.path.join(data_dir, 'network', 'network_nodes.csv'), index_col='NODE_ID')
 
 
 # ## Extract data

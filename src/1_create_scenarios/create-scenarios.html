@@ -11784,6 +11784,7 @@ div#notebook {
 <ul>
 <li>52 weeks/year $\times$ 10 operating scenarios/week = 520 operating scenarios/year.</li>
 </ul>
+<p><strong>Note:</strong> If seeking to construct these scenarios on your local machine, you must download the relevant MMSDM archives from NEMWEB <a href="http://www.nemweb.com.au/#mms-data-model">http://www.nemweb.com.au/#mms-data-model</a>. To replicate this analysis download all monthly archives for 2017 and place these zipped files in a single directory. Update the parameter <code>archive_dir</code> below to point to this directory.</p>
 <h2 id="Import-packages">Import packages<a class="anchor-link" href="#Import-packages">&#182;</a></h2>
 </div>
 </div>
@@ -11826,14 +11827,17 @@ div#notebook {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[2]:</div>
+<div class="prompt input_prompt">In&nbsp;[8]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># Contains network information and generator parameters</span>
-<span class="n">data_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">curdir</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">pardir</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">pardir</span><span class="p">,</span> <span class="s1">&#39;data&#39;</span><span class="p">)</span>
+<span class="n">data_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">curdir</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">pardir</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">pardir</span><span class="p">,</span> <span class="s1">&#39;data&#39;</span><span class="p">,</span> <span class="s1">&#39;egrimod-nem-dataset-v1.3&#39;</span><span class="p">,</span> <span class="s1">&#39;akxen-egrimod-nem-dataset-4806603&#39;</span><span class="p">)</span>
 
 <span class="c1"># MMSDM historic demand and dispatch signals</span>
-<span class="n">archive_dir</span> <span class="o">=</span> <span class="sa">r</span><span class="s1">&#39;D:\nemweb\Reports\Data_Archive\MMSDM\zipped&#39;</span>
+<span class="c1"># ------------------------------------------</span>
+<span class="c1"># Note: This path must be updated for your local machine. It should point to the directory containing</span>
+<span class="c1"># downloaded monthly MMSDM data archive files.</span>
+<span class="n">archive_dir</span> <span class="o">=</span> <span class="sa">r</span><span class="s1">&#39;C:\Users\eee\Desktop\nemweb\Reports\Data_Archive\MMSDM\zipped&#39;</span>
 
 <span class="c1"># Location for output files</span>
 <span class="n">output_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">curdir</span><span class="p">,</span> <span class="s1">&#39;output&#39;</span><span class="p">)</span>
@@ -11854,15 +11858,15 @@ div#notebook {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[3]:</div>
+<div class="prompt input_prompt">In&nbsp;[10]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># Generator information</span>
-<span class="n">df_g</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">data_dir</span><span class="p">,</span> <span class="s1">&#39;generators.csv&#39;</span><span class="p">),</span> 
+<span class="n">df_g</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">data_dir</span><span class="p">,</span> <span class="s1">&#39;generators&#39;</span><span class="p">,</span> <span class="s1">&#39;generators.csv&#39;</span><span class="p">),</span> 
                    <span class="n">index_col</span><span class="o">=</span><span class="s1">&#39;DUID&#39;</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;NODE&#39;</span><span class="p">:</span> <span class="nb">int</span><span class="p">})</span>
 
 <span class="c1"># Network node information</span>
-<span class="n">df_n</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">data_dir</span><span class="p">,</span> <span class="s1">&#39;network_nodes.csv&#39;</span><span class="p">),</span> <span class="n">index_col</span><span class="o">=</span><span class="s1">&#39;NODE_ID&#39;</span><span class="p">)</span>
+<span class="n">df_n</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">data_dir</span><span class="p">,</span> <span class="s1">&#39;network&#39;</span><span class="p">,</span> <span class="s1">&#39;network_nodes.csv&#39;</span><span class="p">),</span> <span class="n">index_col</span><span class="o">=</span><span class="s1">&#39;NODE_ID&#39;</span><span class="p">)</span>
 </pre></div>
 
 </div>
