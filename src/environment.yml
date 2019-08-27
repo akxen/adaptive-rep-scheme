@@ -1,4 +1,4 @@
-name: adaptive-rep
+name: adaptive-rep-scheme
 channels:
   - defaults
 dependencies:
